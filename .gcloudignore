@@ -1,0 +1,12 @@
+# Used by `gcloud run deploy --source .` (replaces .gitignore, so data/ and .cache/ ARE uploaded)
+.git
+.claude
+.venv/
+**/.venv/
+**/node_modules/
+**/__pycache__/
+frontend/dist/
+frontend/.angular/
+backend/.env
+Neo4j-*.txt
+*.png

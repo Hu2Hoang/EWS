@@ -1,0 +1,69 @@
+{
+ "customer_id": "C_A",
+ "as_of": "2026-04-01",
+ "risk_level": "Medium",
+ "score": 25,
+ "source": "gemini",
+ "model": "gemini-3.1-flash-lite",
+ "tool_calls": [
+  {
+   "tool": "get_customer_context",
+   "args": {
+    "customer_id": "C_A"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-31"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-17"
+   }
+  }
+ ],
+ "privacy": {
+  "pii_masked": true,
+  "replacements": 8
+ },
+ "fingerprint": "1928651eea02",
+ "summary": "Customer A is currently classified as Medium risk due to two active early-warning signals. These signals relate to a downturn in the seafood industry and a past-due status of a related company, An Phat Garment Co..",
+ "findings": [
+  {
+   "statement": "Customer A is exposed to a related company, An Phat Garment Co., which is currently 5 days past due.",
+   "evidence_ids": [
+    "CP002",
+    "E-C_A-REL"
+   ],
+   "policy_id": "P-31"
+  },
+  {
+   "statement": "The seafood industry is experiencing a downturn with a growth rate of -5.6%.",
+   "evidence_ids": [
+    "Seafood",
+    "E-IND-TS"
+   ],
+   "policy_id": "P-17"
+  }
+ ],
+ "recommended_actions": [
+  {
+   "action": "review_related_exposure",
+   "rationale": "Per policy P-31, the past-due status of a related company requires an immediate review of contagion risk and the customer's repayment capacity.",
+   "policy_id": "P-31"
+  },
+  {
+   "action": "increase_monitoring",
+   "rationale": "Given the industry downturn and related party risk, increased monitoring is advised to track potential impacts on the customer's financial stability.",
+   "policy_id": "P-17"
+  }
+ ],
+ "limitations": "The customer's net cash flow turned negative (-633.2) in the most recent snapshot (2026-04-01), which is an additional observation but does not currently trigger the specific early-warning signal threshold defined in policy P-17.",
+ "verification": {
+  "ok": true,
+  "issues": []
+ }
+}

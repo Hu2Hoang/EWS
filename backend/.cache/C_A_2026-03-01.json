@@ -1,0 +1,50 @@
+{
+ "customer_id": "C_A",
+ "as_of": "2026-03-01",
+ "risk_level": "Low",
+ "score": 10,
+ "source": "gemini",
+ "model": "gemini-3.1-flash-lite",
+ "tool_calls": [
+  {
+   "tool": "get_customer_context",
+   "args": {
+    "customer_id": "C_A"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-17"
+   }
+  }
+ ],
+ "privacy": {
+  "pii_masked": true,
+  "replacements": 5
+ },
+ "fingerprint": "a7c8deb2a683",
+ "summary": "Customer A is currently classified as Low Risk. While the company operates within the Seafood industry, which is experiencing a downturn, it does not currently meet the criteria for a high-risk classification under policy P-17.",
+ "findings": [
+  {
+   "statement": "Customer A operates in the Seafood industry, which is currently experiencing a downturn with a growth rate of -5.2%.",
+   "evidence_ids": [
+    "Seafood",
+    "E-IND-TS"
+   ],
+   "policy_id": "P-17"
+  }
+ ],
+ "recommended_actions": [
+  {
+   "action": "no_action",
+   "rationale": "The customer has only one early-warning signal, which does not meet the threshold of 3 or more signals required by policy P-17 for escalation.",
+   "policy_id": "P-17"
+  }
+ ],
+ "limitations": "The analysis is based on current industry data; the credit officer should monitor if the industry downturn begins to negatively impact the customer's revenue or cash flow in future periods.",
+ "verification": {
+  "ok": true,
+  "issues": []
+ }
+}

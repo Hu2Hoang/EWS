@@ -1,0 +1,109 @@
+{
+ "customer_id": "C_A",
+ "as_of": "2026-07-01",
+ "risk_level": "High",
+ "score": 100,
+ "source": "gemini",
+ "model": "gemini-3.1-flash-lite",
+ "tool_calls": [
+  {
+   "tool": "get_customer_context",
+   "args": {
+    "customer_id": "C_A"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-17"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-31"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-22"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-08"
+   }
+  },
+  {
+   "tool": "get_shared_company_exposure",
+   "args": {
+    "company_id": "CP002"
+   }
+  }
+ ],
+ "privacy": {
+  "pii_masked": true,
+  "replacements": 15
+ },
+ "fingerprint": "9ddb9a2716ec",
+ "summary": "Customer A is currently classified as High Risk due to multiple early-warning signals, including a significant revenue decline, negative cash flow, and rising DPD. The situation is compounded by a related company's delinquency and a downturn in the seafood industry.",
+ "findings": [
+  {
+   "statement": "Customer A has experienced a 32.3% drop in 90-day revenue and two consecutive periods of negative net cash flow.",
+   "evidence_ids": [
+    "C_A"
+   ],
+   "policy_id": "P-17"
+  },
+  {
+   "statement": "Related company An Phat Garment Co. is 41 days past due, indicating potential contagion risk.",
+   "evidence_ids": [
+    "CP002"
+   ],
+   "policy_id": "P-31"
+  },
+  {
+   "statement": "Collateral value has decreased by 10.2% from its peak valuation.",
+   "evidence_ids": [
+    "KC_A"
+   ],
+   "policy_id": "P-22"
+  },
+  {
+   "statement": "The loan currently shows 35 days past due, triggering disbursement suspension protocols.",
+   "evidence_ids": [
+    "LC_A"
+   ],
+   "policy_id": "P-08"
+  }
+ ],
+ "recommended_actions": [
+  {
+   "action": "increase_monitoring",
+   "rationale": "The customer has triggered more than 3 early-warning signals, requiring monthly monitoring per policy P-17.",
+   "policy_id": "P-17"
+  },
+  {
+   "action": "suspend_disbursement",
+   "rationale": "The loan is High Risk with DPD over 10 days and negative cash flow, necessitating a suspension of disbursements per policy P-08.",
+   "policy_id": "P-08"
+  },
+  {
+   "action": "request_additional_collateral",
+   "rationale": "Collateral value has dropped by more than 10%, requiring a request for additional collateral or a credit limit reduction per policy P-22.",
+   "policy_id": "P-22"
+  },
+  {
+   "action": "review_related_exposure",
+   "rationale": "A related company is past due, requiring a review of contagion risk and repayment capacity per policy P-31.",
+   "policy_id": "P-31"
+  }
+ ],
+ "limitations": "The credit officer should verify if the guarantor Guarantor 43 can provide support to mitigate the current liquidity issues and assess if the seafood industry downturn is expected to persist.",
+ "verification": {
+  "ok": true,
+  "issues": []
+ }
+}

@@ -1,0 +1,88 @@
+{
+ "customer_id": "C_A",
+ "as_of": "2026-09-01",
+ "risk_level": "High",
+ "score": 100,
+ "source": "gemini",
+ "model": "gemini-3.1-flash-lite",
+ "tool_calls": [
+  {
+   "tool": "get_customer_context",
+   "args": {
+    "customer_id": "C_A"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-17"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-31"
+   }
+  }
+ ],
+ "privacy": {
+  "pii_masked": true,
+  "replacements": 8
+ },
+ "fingerprint": "4721f9e3cb3b",
+ "summary": "Customer A is currently classified as High Risk due to multiple early-warning signals, including a 39% revenue drop, negative cash flow, and 90 days past due on their loan. The situation is further complicated by a related company, An Phat Garment Co., being 65 days past due, indicating potential contagion risk.",
+ "findings": [
+  {
+   "statement": "Customer A has experienced a 38.6% drop in 90-day revenue compared to the baseline.",
+   "evidence_ids": [
+    "C_A"
+   ],
+   "policy_id": "P-17"
+  },
+  {
+   "statement": "The customer has recorded negative net cash flow for two consecutive periods (-1392.1 and -658.1).",
+   "evidence_ids": [
+    "C_A"
+   ],
+   "policy_id": "P-17"
+  },
+  {
+   "statement": "Related company An Phat Garment Co. is currently 65 days past due.",
+   "evidence_ids": [
+    "CP002"
+   ],
+   "policy_id": "P-31"
+  },
+  {
+   "statement": "Collateral value for the loan has decreased by 9.8% from its peak.",
+   "evidence_ids": [
+    "KC_A"
+   ],
+   "policy_id": "P-22"
+  },
+  {
+   "statement": "The loan for Customer A has reached 90 days past due.",
+   "evidence_ids": [
+    "LC_A"
+   ],
+   "policy_id": "P-08"
+  }
+ ],
+ "recommended_actions": [
+  {
+   "action": "increase_monitoring",
+   "rationale": "The customer exhibits more than 3 early-warning signals, requiring immediate escalation to High Risk and monthly monitoring per policy P-17.",
+   "policy_id": "P-17"
+  },
+  {
+   "action": "review_related_exposure",
+   "rationale": "Due to the related company An Phat Garment Co. being past due, a formal review of contagion risk and repayment capacity is required per policy P-31.",
+   "policy_id": "P-31"
+  }
+ ],
+ "limitations": "The officer should verify if the guarantor Guarantor 43 has sufficient liquidity to cover the loan exposure given the deteriorating financial health of the customer and the related party.",
+ "verification": {
+  "ok": true,
+  "issues": []
+ }
+}

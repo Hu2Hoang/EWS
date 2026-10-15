@@ -1,0 +1,7 @@
+Neo4j-*.txt
+.env
+.venv/
+__pycache__/
+node_modules/
+backend/static
+.claude/

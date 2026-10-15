@@ -1,0 +1,180 @@
+<a class="skip" href="#main">Skip to Main Content</a>
+
+<header class="top">
+  <div class="brand">
+    <div>
+      <h1 translate="no">Early Warning</h1>
+      <p>Early warning for loan officers</p>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Views">
+    @for (t of tabs; track t.id) {
+      <button type="button" [attr.aria-current]="view() === t.id ? 'page' : null" (click)="view.set(t.id)">{{ t.label }}</button>
+    }
+  </nav>
+  @if (backtest(); as b) {
+    <dl class="kpis" aria-label="Backtest results on synthetic data">
+      <div class="kpi"><dt>Earlier than legacy rule</dt><dd>+{{ b.extra_lead_days }}<span> days</span></dd></div>
+      <div class="kpi"><dt>False positives</dt><dd>{{ b.new_system.false_positives }}<span> vs. {{ b.legacy_rule.false_positives }}</span></dd></div>
+      <div class="kpi"><dt>Precision</dt><dd>{{ b.new_system.precision }}<span> vs. {{ b.legacy_rule.precision }}</span></dd></div>
+      <div class="kpi synthetic"><dt>Backtest</dt><dd>Synthetic data</dd></div>
+    </dl>
+  }
+</header>
+
+@if (error()) { <div class="err" role="alert">{{ error() }}</div> }
+<div class="toast" role="status" aria-live="polite">{{ toast() }}</div>
+
+<main id="main" class="stage">
+@switch (view()) {
+@case ('overview') { <app-command-center (openCase)="openCase($event.id, $event.month)" (openIndustry)="openIndustry($event)" /> }
+@case ('stress') { <app-stress-test (openCase)="openCase($event)" /> }
+@case ('case') {
+<div class="layout">
+  <section class="card list" aria-labelledby="portfolio-h">
+    <h2 id="portfolio-h">Portfolio <small>{{ month(asOf()) }}</small></h2>
+    <label class="sr" for="q">Search customers</label>
+    <input id="q" class="search" type="search" name="customer-search" autocomplete="off" spellcheck="false"
+           placeholder="Search by name or industry…" [ngModel]="search()" (ngModelChange)="search.set($event)">
+    <div class="seg" role="group" aria-label="Filter by risk level">
+      @for (l of levels; track l) {
+        <button type="button" [attr.aria-pressed]="levelFilter() === l" (click)="levelFilter.set(l)">{{ l }}</button>
+      }
+    </div>
+    <ul class="rows">
+      @for (c of visibleCustomers(); track c.id) {
+        <li>
+          <button type="button" class="row" [class.sel]="c.id === selectedId()" [attr.aria-current]="c.id === selectedId()" (click)="select(c.id)">
+            <span class="dot {{ lvl(c.level) }}" aria-hidden="true"></span>
+            <span class="nm">{{ c.name }}<small>{{ c.industry }}, {{ c.segment }}</small></span>
+            <span class="sc">{{ c.score }}@if (c.legacy_flag) { <em title="Already flagged by the legacy rule (DPD ≥ 30)" aria-hidden="true">⚑</em><span class="sr">Flagged by the legacy rule</span> }</span>
+          </button>
+        </li>
+      } @empty {
+        <li class="muted pad">{{ customers().length ? 'No customers match this filter.' : 'Loading portfolio…' }}</li>
+      }
+      @if (hiddenCount()) { <li class="muted tiny pad">Showing {{ visibleCustomers().length }} of {{ matching().length }}. Narrow the search to see the rest.</li> }
+    </ul>
+  </section>
+
+  <section class="center" aria-label="Graph and time travel">
+    <div class="card graph">
+      <app-graph-view [overview]="overview()" [context]="ctx()" [focusId]="focusId()" (nodeClick)="focusId.set($event)" />
+      <div class="chips" aria-hidden="true">
+        @for (l of legend; track l.type) { <span class="chip"><i class="t-{{ l.type }}"></i>{{ l.label }}</span> }
+      </div>
+      <p class="hint">Faded: full knowledge graph. Bright: context for this decision. Red ring: rule signal.</p>
+    </div>
+
+    <div class="card time">
+      <div class="time-head">
+        <h2>Time travel <small>{{ month(asOf()) }}</small></h2>
+        @if (ctx(); as c) {
+          <span class="badge {{ lvl(c.assessment.level) }}">{{ c.assessment.level }} risk, {{ c.assessment.signal_count }} {{ c.assessment.signal_count === 1 ? 'signal' : 'signals' }}</span>
+        }
+      </div>
+      <div class="chart-wrap">
+        <svg viewBox="0 0 100 50" preserveAspectRatio="none" class="chart" aria-hidden="true">
+          
+          
+          <polyline [attr.points]="linePoints()" class="line" vector-effect="non-scaling-stroke" />
+          @for (m of markers(); track m.label) { <line [attr.x1]="m.x" [attr.x2]="m.x" y1="0" y2="50" class="{{ m.cls }}" vector-effect="non-scaling-stroke" /> }
+          <line [attr.x1]="cursorX()" [attr.x2]="cursorX()" y1="0" y2="50" class="cursor" vector-effect="non-scaling-stroke" />
+        </svg>
+        <span class="cursor-dot" [style.left.%]="cursorX()" [style.top.%]="cursorY() * 2" aria-hidden="true"></span>
+      </div>
+      <label class="sr" for="scrub">Assessment month</label>
+      <input id="scrub" type="range" min="0" [max]="timeline().length - 1" [value]="idx()"
+             [attr.aria-valuetext]="month(asOf())" (input)="scrub(+$any($event.target).value)" />
+      <ul class="marks">
+        @for (m of markers(); track m.label) { <li class="{{ m.cls }}"><i></i>{{ m.label }}: <b>{{ month(m.month) }}</b></li> }
+      </ul>
+    </div>
+  </section>
+
+  <aside class="card panel" aria-label="Assessment">
+    @if (ctx(); as c) {
+      <div class="who">
+        <div>
+          <h2>{{ c.customer.name }}</h2>
+          <p class="sub">{{ c.customer.industry }}, {{ c.customer.segment }}, {{ loan(c.customer.loan_amount) }}</p>
+        </div>
+        <div class="ring {{ lvl(c.assessment.level) }}" role="img" [attr.aria-label]="'Risk score ' + c.assessment.score + ' out of 100'">
+          <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+            <circle cx="32" cy="32" r="26" class="trk"/>
+            <circle cx="32" cy="32" r="26" class="val" [attr.stroke-dasharray]="ringDash()" transform="rotate(-90 32 32)"/>
+          </svg>
+          <b>{{ c.assessment.score }}</b>
+        </div>
+      </div>
+
+      <h3>Rule signals</h3>
+      @for (s of c.assessment.signals; track s.code) {
+        <button type="button" class="sig" (click)="focusId.set(s.evidence[0])">
+          <span class="sig-top"><b>{{ s.label }}</b><span class="tag">{{ s.policy }}</span></span>
+          <small>{{ describe(s) }}</small>
+        </button>
+      } @empty { <p class="muted">No early-warning signals at this date.</p> }
+
+      <h3>Gemini analysis</h3>
+      <div aria-live="polite">
+        @if (explanation(); as e) {
+          <div class="ai">
+            <div class="src">{{ e.source === 'gemini' ? e.model : 'Fallback: rules only, no LLM' }}@if (e.privacy?.pii_masked) {, PII masked before the LLM ({{ e.privacy?.replacements }} values) }</div>
+            <ol class="steps" aria-label="Tools the agent called">
+              @for (t of e.tool_calls; track $index) { <li><code translate="no">{{ t.tool }}({{ argText(t.args) }})</code></li> }
+            </ol>
+            <p class="summary">{{ e.summary }}</p>
+            @for (f of e.findings; track $index) {
+              <div class="find">
+                <span>{{ f.statement }}</span>
+                <span class="ev">
+                  @for (id of f.evidence_ids; track id) { <button type="button" class="link" (click)="focusId.set(id)" translate="no" [attr.aria-label]="'Show ' + id + ' on the graph'">{{ id }}</button> }
+                  <span class="tag">{{ f.policy_id }}</span>
+                </span>
+              </div>
+            }
+            @if (e.limitations) { <p class="lim"><b>Check before deciding:</b> {{ e.limitations }}</p> }
+            @if (!e.verification.ok) { <p class="lim">Verification: {{ e.verification.issues.join('; ') }}</p> }
+          </div>
+
+          <h3>Recommended actions</h3>
+          <label class="sr" for="note">Officer note</label>
+          <textarea id="note" name="officer-note" autocomplete="off" placeholder="Add a note for the audit log (optional)…" [ngModel]="note()" (ngModelChange)="note.set($event)"></textarea>
+          @for (a of e.recommended_actions; track a.action) {
+            <div class="act">
+              <div class="act-top"><b>{{ actionLabels[a.action] ?? a.action }}</b><span class="tag">{{ a.policy_id }}</span></div>
+              <small>{{ a.rationale }}</small>
+              <div class="btns">
+                <button type="button" class="btn ok" (click)="decide(a.action, 'approved')">Approve</button>
+                <button type="button" class="btn ghost" (click)="decide(a.action, 'rejected')">Reject</button>
+              </div>
+            </div>
+          } @empty { <p class="muted">No action is recommended.</p> }
+        } @else {
+          <button type="button" class="btn run" [disabled]="explaining()" (click)="runExplain()">
+            {{ explaining() ? 'Agent is analysing…' : 'Run AI analysis' }}
+          </button>
+          <p class="muted tiny">The agent reads the context graph, looks up policies and checks contagion through shared companies. It never changes the score.</p>
+        }
+      </div>
+
+      <h3>Audit log</h3>
+      @for (d of decisions(); track d.id) {
+        <div class="log">
+          <b class="{{ d.decision }}">{{ d.decision === 'approved' ? 'Approved' : 'Rejected' }}</b>
+          {{ actionLabels[d.action] ?? d.action }}, {{ month(d.as_of) }}, {{ d.risk_level }} risk
+          @if (d.note) { <small>“{{ d.note }}”</small> }
+          <small>{{ d.officer }}, {{ when(d.created_at) }}</small>
+        </div>
+      } @empty { <p class="muted">No decisions recorded yet.</p> }
+    } @else {
+      <p class="muted pad">Loading assessment…</p>
+    }
+  </aside>
+</div>
+}
+}
+</main>
+
+<app-assistant (openCase)="openCase($event)" />
