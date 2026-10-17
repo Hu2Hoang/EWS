@@ -29,6 +29,8 @@ borrower's failure **spreads** to the related companies, guarantors and partners
 - **React:** Gemini reads news in English or Vietnamese, extracts risk events and links them to graph nodes. The officer confirms them, and the portfolio is re-scored.
 - **Act:** approved actions become tasks with deadlines. Completing one applies the mitigation, and the same rules measure its effect.
 
+![Early Warning: detailed solution architecture](assets/architecture.png)
+
 ## Features
 
 | View | What it does |
