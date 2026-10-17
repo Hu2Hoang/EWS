@@ -44,23 +44,33 @@ borrower's failure **spreads** to the related companies, guarantors and partners
 
 ## How It Works
 
-```
-Bank data (1,200 synthetic loans) ──► Knowledge graph (Neo4j)
-                                          │  one customer + one "as of" month
-                                          ▼
-                              Context builder ──► context graph (only what matters to this decision)
-                                          │
-                     ┌────────────────────┼─────────────────────┐
-                     ▼                    ▼                     ▼
-          Rules engine (6 signals)   Contagion engine       Gemini (3 roles)
-          score + risk level         inflow, cascades,      analyst agent · portfolio assistant ·
-                                     contagion matrix       news extraction (verified, PII masked)
-                     └────────────────────┼─────────────────────┘
-                                          ▼
-                 Angular UI ──► officer decides ──► Action board ──► mitigation applied
-                                          ▲                                   │
-                                          └──── live overlays (reversible) ◄──┘
-                                                news events + mitigations re-score everything
+```mermaid
+flowchart TD
+    data["Bank data<br/>1,200 synthetic loans"] --> kg[("Knowledge graph<br/>Neo4j")]
+    kg -->|"one customer + one month"| ctx["Context builder<br/>only what matters to this decision"]
+
+    ctx --> rules["Rules engine<br/>6 policy-cited signals → score + risk level"]
+    ctx --> contagion["Contagion engine<br/>risk inflow · cascades · matrix"]
+    ctx --> agent["Gemini analyst agent<br/>tools · cited evidence · verified"]
+    news["News, English / Vietnamese"] --> extract["Gemini news extraction<br/>entity · event · severity"]
+
+    rules --> ui["Angular UI on Cloud Run"]
+    contagion --> ui
+    agent --> ui
+    extract -->|"impact preview"| ui
+
+    ui --> officer{{"Credit officer<br/>approve / reject"}}
+    officer -->|"approved action"| board["Action board<br/>tasks with SLA"]
+    officer -->|"confirmed news event"| overlays[["Live overlays<br/>reversible"]]
+    board -->|"mitigation done"| overlays
+    overlays -.->|"re-score everything"| kg
+
+    classDef gemini fill:#EEF4FE,stroke:#1A73E8,color:#15171A
+    classDef risk fill:#FDF2F2,stroke:#A3262F,color:#15171A
+    classDef human fill:#EFF7F3,stroke:#3E7B62,color:#15171A
+    class agent,extract gemini
+    class contagion risk
+    class officer,board human
 ```
 
 ### Google Services
