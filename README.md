@@ -1,69 +1,117 @@
-# Early Warning: AI Early Detection of Non-Performing Loans
+# Early Warning: Graph-Aware Early Detection of Non-Performing Loans
 
-> Google Cloud AI Builder Cup 2026 · Theme: **BFSI, Intelligent Risk, Fraud & Financial Experiences**
+> Google Cloud AI Builder Cup 2026 · Track: **BFSI (Intelligent Risk, Fraud & Financial Experiences)** · Team **EWS - GDG Hanoi**
 
-Traditional early-warning systems fire when a loan is already past due, and they cannot say *why* a loan was flagged.
-**Early Warning** combines a **Knowledge Graph**, a decision-scoped **Context Graph**, a transparent **rules engine** and a
-**Gemini agent** to flag deteriorating loans earlier, explain every flag with cited evidence, and keep a human credit
-officer in charge of the final decision.
+| | |
+|---|---|
+| 🌐 **Live prototype** | <https://early-warning-420247575616.asia-southeast1.run.app> |
+| 🎬 **Demo video** | [Google Drive](https://drive.google.com/file/d/1InDYW293xSuaFpzNTwimwzQQpNzx2vnQ/view?usp=drive_link) |
+| 📑 **Pitch deck** | [EWS - GDG Hanoi _ AI Builder Cup.pdf](EWS%20-%20GDG%20Hanoi%20_%20AI%20Builder%20Cup.pdf) |
+| 💻 **Source code** | <https://github.com/Hu2Hoang/EWS> |
+
+The prototype runs on synthetic data (1,200 loans). No login is needed. Start with **Case review → Customer A**, then
+click any node and choose *Simulate … defaulting*.
+
+## The Problem
+
+Banks only flag a loan as bad once it is **30 days past due**, which is too late to act. And they cannot see how one
+borrower's failure **spreads** to the related companies, guarantors and partners around it.
+
+## The Solution
+
+**Early Warning** watches a knowledge graph of the loan book and runs one closed loop:
+
+**Detect → Explain → Simulate contagion → React to news → Act and measure**
+
+- **Detect:** transparent, policy-cited rules score every loan for any month, months before the 30-day rule fires.
+- **Explain:** a Gemini agent explains each alert, citing graph nodes and policies. Every claim is verified, and Gemini never sets a score.
+- **Simulate:** click any counterparty to make it default and watch the risk cascade through the graph, wave by wave, with domino defaults.
+- **React:** Gemini reads news in English or Vietnamese, extracts risk events and links them to graph nodes. The officer confirms them, and the portfolio is re-scored.
+- **Act:** approved actions become tasks with deadlines. Completing one applies the mitigation, and the same rules measure its effect.
+
+## Features
+
+| View | What it does |
+|---|---|
+| **Command Center** | Portfolio KPIs, risk mix over time with a *Play timeline* button (early warnings vs. the legacy rule), industry heatmap, loans that newly turned High risk |
+| **Case Review** | One loan: knowledge graph with its decision context lit up, a time-travel slider, rule signals with policies, Gemini analysis with cited evidence, approve / reject, action plan, audit log |
+| **Contagion Lab** | Default any company, guarantor or borrower and watch the cascade. Borrowers pushed over the default threshold fall in the next round. Sliders for contagion strength, path length and threshold |
+| **Contagion Matrix** | Which sources spread risk into which industry today. Click a cell to see who receives it |
+| **News to Graph** | Gemini extracts entity, event type and severity from a headline, links it to a graph node and previews the impact. Apply or dismiss; every applied event can be undone. *Play news feed* streams sample headlines |
+| **Action Board** | Kanban of tasks with SLAs (drag and drop). *Done* applies the mitigation (collateral top-up, ring-fencing a failing partner, loan rescheduling) and shows score, level and contagion before vs. after |
+| **Stress Test** | Industry downturn, related-company failure or collateral shock on a copy of the portfolio, re-scored by the same rules |
+| **Ask Gemini** | Chat with the portfolio. Gemini answers by calling typed tools and links every answer to cases |
 
 ## How It Works
 
 ```
-Synthetic bank data (1,200 loans) ──► Knowledge Graph (Neo4j AuraDB)
-                              │  one customer + one "as of" month
-                              ▼
-                      Context Builder  ──►  Context Graph (only what matters to this decision)
-                              │
-                              ▼
-                  Rules engine (6 signals, policy-backed)  ──►  score + risk level
-                              │
-                              ▼
-        Gemini agent (function calling: context, policy lookup, contagion check)
-                              │  schema-constrained JSON, verified against the graph
-                              ▼
-        Angular UI: graph · time travel · explanation · approve / reject · audit log
+Bank data (1,200 synthetic loans) ──► Knowledge graph (Neo4j)
+                                          │  one customer + one "as of" month
+                                          ▼
+                              Context builder ──► context graph (only what matters to this decision)
+                                          │
+                     ┌────────────────────┼─────────────────────┐
+                     ▼                    ▼                     ▼
+          Rules engine (6 signals)   Contagion engine       Gemini (3 roles)
+          score + risk level         inflow, cascades,      analyst agent · portfolio assistant ·
+                                     contagion matrix       news extraction (verified, PII masked)
+                     └────────────────────┼─────────────────────┘
+                                          ▼
+                 Angular UI ──► officer decides ──► Action board ──► mitigation applied
+                                          ▲                                   │
+                                          └──── live overlays (reversible) ◄──┘
+                                                news events + mitigations re-score everything
 ```
 
-**What you can do in the app**
+### Google Services
 
-| View | What it does |
+| Service | How it is used |
 |---|---|
-| **Command Center** | Portfolio KPIs, risk mix over time with a **Play Timeline** button, industry heatmap, and the loans that newly turned High risk this month |
-| **Case Review** | One loan: Knowledge Graph with its Context Graph lit up, time-travel slider, rule signals, Gemini analysis with cited evidence, approve / reject, audit log |
-| **Contagion Lab** | Make any counterparty (or borrower) default and watch the risk spread wave by wave through shared companies, guarantors and transaction partners. Borrowers pushed over a default threshold fall in the next round (domino defaults). Sliders for contagion strength, path length and threshold; click any node to add it to the shock. Below it, the **contagion matrix**: which sources spread risk into which industry today, click a cell to see who receives it |
-| **News to Graph** | Paste a headline or article (English or Vietnamese). Gemini extracts the credit-risk events, the entities are linked to graph nodes through the PII tokens, and the impact is previewed before anything changes. The officer applies or dismisses each event; applied events re-score the portfolio and can be undone. *Play news feed* replays sample headlines as a live stream |
-| **Action Board** | Approved actions become tasks with an SLA (Kanban, drag and drop). Completing a task applies the mitigation (collateral top-up, ring-fencing a past-due related company, loan rescheduling) and the rules measure what it bought: score, level, signals cleared, contagion inflow |
-| **Stress Test** | What-if lab: industry downturn, related-company failure, collateral shock. The same rules re-score the portfolio and show which loans move up a level |
-| **Ask Gemini** | Chat with the portfolio. Gemini answers by calling typed tools (find customers, summarise a customer, run a stress test) and links every answer to cases |
+| **Gemini API** (`google-genai`) | **Case analyst agent:** function calling over context, policy and shared-exposure tools, then schema-constrained JSON. Every cited node id and policy id is verified against the graph. **Portfolio assistant:** multi-turn function calling over typed tools. **News to graph:** structured extraction from English or Vietnamese text; names are masked into tokens first, and the tokens double as exact entity links |
+| **Cloud Run** | One service hosts the Angular UI at `/` and the FastAPI API at `/api`, with one warm instance |
+| **Cloud Build + Artifact Registry** | `gcloud run deploy --source .` builds the multi-stage Dockerfile and stores the image |
 
-**Design principles**
+### Design Principles
 
 - **The LLM never scores.** Signals, score and risk level come from deterministic rules. Gemini only explains and proposes.
-- **Every claim is traceable.** Each finding cites graph node ids and a policy id. The backend checks both exist and strips
-  anything that does not.
-- **Working memory, not a data dump.** The Context Graph is the small subgraph relevant to one decision at one point in time.
-- **Human in the loop.** Actions are proposals. Approvals and rejections are written to an audit log.
+- **Every claim is traceable.** Each finding cites graph node ids and a policy id. The backend checks both exist and strips anything that does not.
+- **Human in the loop.** Actions are proposals. Every approval and rejection goes into an audit log.
 - **Closed loop, reversible.** Confirmed news events and completed mitigations are live overlays on top of the loaded data
-  (`backend/app/overlays.py`, stored in `backend/data/live/`). Neo4j is never modified, every overlay can be undone, and
-  `POST /live/reset` returns to the loaded data.
-- **Graceful degradation.** If Gemini is unavailable the API returns a rule-generated explanation instead of failing.
-  If Neo4j is unreachable the API serves the last saved snapshot of the graph.
-- **PII stays home.** Names of customers, related companies and guarantors are replaced by tokens before any text goes to
-  Gemini and restored in the answer (`backend/app/privacy.py`). The UI shows how many values were masked.
+  (`backend/app/overlays.py`). Neo4j is never modified, every overlay can be undone, and `POST /api/live/reset` restores the loaded data.
+- **PII stays home.** Names of customers, related companies and guarantors are replaced by tokens before any text goes
+  to Gemini, and restored in the answer (`backend/app/privacy.py`).
+- **Graceful degradation.** If Gemini fails, the API returns a rule-generated explanation and a keyword news extractor. If Neo4j fails, it serves a saved graph snapshot.
 
-### Early-Warning Signals
+## Results
 
-| Signal | Fires when | Policy |
+### Detection Quality (Backtest on Synthetic Data)
+
+1,200 loans: 73 defaulters, 96 designed as legacy-rule false alarms, 72 stressed and recovered, 959 healthy.
+
+| | Early Warning | Legacy rule (DPD ≥ 30) |
 |---|---|---|
-| Revenue drop | 3-month average revenue is down 15% or more vs. the baseline period | P-17 |
-| Negative cash flow | Net cash flow is negative for 2 consecutive periods | P-17 |
-| Related company past due | Any related company has days past due above 0 | P-31 |
-| Collateral decline | Collateral is 9% or more below the peak of the last 6 valuations | P-22 |
-| Days past due | The loan is 10 or more days past due (extra weight at 30+) | P-08 |
-| Industry downturn | Industry growth is at or below -3% for 2 consecutive months | P-17 |
+| Defaulters caught | 73 / 73 | 73 / 73 |
+| Average warning before default | **120 days** | 61 days |
+| False positives | **14** | 96 |
+| Precision | **0.84** | 0.43 |
 
-Risk level follows policy P-17: **3+ signals = High**, 2 = Medium, otherwise Low.
+> The data and the thresholds were designed together, so these numbers show the mechanism working. They are **not**
+> evidence of real-world performance; a real deployment needs backtesting on historical bank data.
+
+### Response Times
+
+Measured on the full 1,200-loan graph (median, developer machine):
+
+| Operation | Time |
+|---|---|
+| Context graph + rule signals for one loan | 2 ms |
+| Re-score the whole portfolio | 49 ms |
+| Stress test | 55 ms |
+| Default cascade simulation | 0.37 s |
+| Complete a task (apply the mitigation, re-score everyone) | 86 ms |
+| Gemini news → graph event (with impact preview) | 1.4 s |
+| Gemini portfolio assistant | 3.1 s |
+| Gemini case analysis, fresh / cached | 5.1 s / 4 ms |
 
 ## Demo Scenario
 
@@ -72,63 +120,69 @@ Risk level follows policy P-17: **3+ signals = High**, 2 = Medium, otherwise Low
 | Month | Event |
 |---|---|
 | Jan 2026 | Seafood industry enters a downturn |
-| Feb to Apr | Revenue falls, about 35% cumulative. Apr: **Medium** (2 signals), related company becomes past due |
+| Feb to Apr | Revenue falls about 35%. Apr: **Medium** (2 signals); related company An Phat Garment becomes past due |
 | May 2026 | Collateral revalued, down 10%. **Early Warning fires: High, 5 signals** |
-| Jun 2026 | Days past due reaches 12 |
 | Jul 2026 | Legacy rule (DPD ≥ 30) finally flags the loan |
 | Sep 2026 | Default |
 
-Customer A shares its related company with 7 other borrowers (all Low risk today), which is the contagion story for the stress test and the assistant.
+In May, defaulting An Phat Garment in the Contagion Lab hits 8 borrowers and puts 4 newly on watch. On the Action Board,
+restoring the collateral takes Customer A's score from 80 to 65, and ring-fencing An Phat takes it to 50 and halves the
+contagion inflow. The loan stays High, because its sales are still falling.
 
-Use the **Time Travel** slider to watch the context, the score and the explanation change month by month.
+### Early-Warning Signals
 
-### Backtest
-
-Run on 1,200 **synthetic** loans (73 defaulters, 96 designed as legacy-rule false alarms, 72 that were temporarily stressed and recovered, 959 healthy):
-
-| | Early Warning | Legacy rule (DPD ≥ 30) |
+| Signal | Fires when | Policy |
 |---|---|---|
-| Defaulters caught | 73 / 73 | 73 / 73 |
-| False positives | 14 | 96 |
-| Precision | 0.84 | 0.43 |
-| Average warning before default | 120.2 days | 60.8 days |
+| Revenue drop | 3-month average revenue is down 15% or more vs. the baseline | P-17 |
+| Negative cash flow | Net cash flow is negative for 2 consecutive periods | P-17 |
+| Related company past due | Any related company is past due | P-31 |
+| Collateral decline | Collateral is 9% or more below the peak of the last 6 valuations | P-22 |
+| Days past due | The loan is 10 or more days past due (extra weight at 30+) | P-08 |
+| Industry downturn | Industry growth is at or below -3% for 2 consecutive months | P-17 |
 
-> **Read this honestly.** The data and the thresholds were designed together, so these numbers show the mechanism working.
-> They are **not** evidence of real-world performance. A real deployment needs backtesting on historical bank data.
+Risk level (P-17): **3+ signals = High**, 2 = Medium, otherwise Low.
+
+### Contagion Model
+
+Risk reaching borrower *i* = the sum, over non-backtracking paths of up to *h* hops, of
+`α^length × relation weight × share × own risk of the source`. The relation weights are related company 0.6,
+guarantor 0.5, transaction 0.4 and industry 0.15. A relation only counts from its start month, so the model never
+looks ahead. In a cascade, the shocked nodes default, and a borrower pushed from below the default threshold to above
+it defaults in the next round (up to 4 rounds).
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Knowledge Graph | Neo4j AuraDB Free (Cypher) |
-| Backend | Python 3.12, FastAPI, `neo4j` driver |
-| LLM | Gemini via `google-genai` (default `gemini-3.1-flash-lite`, configurable), function calling plus structured output |
+| Knowledge graph | Neo4j AuraDB (Cypher) |
+| Backend | Python 3.12, FastAPI |
+| AI | Gemini API via `google-genai` (default `gemini-3.1-flash-lite`): function calling, structured output |
 | Frontend | Angular (standalone components, signals), Cytoscape.js |
-| Package tooling | `uv` (Python), `npm` with Node 22 (frontend) |
+| Hosting | Google Cloud Run, Cloud Build, Artifact Registry |
 
 ## Project Structure
 
 ```
-backend/
-  app/
-    db.py            Neo4j connection
-    repository.py    Loads the graph into memory once; all as-of filtering happens in Python
-    scoring.py       Signals, score, risk level (rules only)
-    context.py       Context Builder: the decision-scoped subgraph for a customer and month
-    agent.py         Gemini agent: tool loop, schema output, verification, fallback, cache
-    whatif.py        Stress test: shock a copy of the portfolio and re-run the rules
-    portfolio.py     Command Center aggregates: risk mix, heatmap, monthly series
-    chat.py          Portfolio assistant: Gemini function calling over typed tools
-    privacy.py       Pseudonymisation of names before they reach the LLM
-    backtest.py      Early Warning vs. legacy rule on labelled synthetic data
-    decisions.py     Approve / reject records and the audit log (stored in Neo4j)
-    main.py          FastAPI routes
-  scripts/
-    seed.py          Generates synthetic data and loads it into Neo4j
-    warm_cache.py    Pre-runs Gemini for the demo checkpoints
-frontend/            Angular app (Command Center, Case Review, Stress Test, assistant)
-Dockerfile           One container for Cloud Run: Angular build + FastAPI under /api
-deploy.sh            gcloud run deploy from source
+backend/app/
+  repository.py    Loads the graph into memory once, then applies the live overlays
+  scoring.py       Signals, score, risk level (rules only)
+  context.py       Context builder: the decision-scoped subgraph for a customer and month
+  contagion.py     Contagion engine: risk inflow over graph paths, default cascades, contagion matrix
+  agent.py         Gemini case analyst: tool loop, schema output, verification, fallback, cache
+  chat.py          Gemini portfolio assistant: function calling over typed tools
+  news.py          News to graph: Gemini extraction, entity linking through PII tokens, keyword fallback
+  overlays.py      Reversible live changes (confirmed news events, mitigations)
+  live.py          Before/after impact, tasks with SLA, applying and undoing overlays
+  whatif.py        Stress test
+  portfolio.py     Command Center aggregates
+  privacy.py       Pseudonymisation of names before they reach the LLM
+  backtest.py      Early Warning vs. legacy rule
+  decisions.py     Approve / reject records and the audit log (Neo4j)
+  main.py          FastAPI routes
+backend/scripts/   seed.py (synthetic data), warm_cache.py (pre-run Gemini), import_real.py, calibrate_contagion.py
+frontend/src/app/  command-center, graph-view, contagion-lab, live-events, action-board, stress-test, assistant
+Dockerfile         One container: Angular build + FastAPI under /api
+deploy.sh          gcloud run deploy from source
 ```
 
 ### Graph Model
@@ -147,155 +201,88 @@ deploy.sh            gcloud run deploy from source
 
 ## Getting Started
 
-### Prerequisites
-
-- Python 3.12 and [`uv`](https://docs.astral.sh/uv/)
-- Node.js **22 or newer** (Angular requires it; `nvm install 22` works)
-- A free [Neo4j AuraDB](https://neo4j.com/cloud/aura-free/) instance
-- A [Gemini API key](https://aistudio.google.com/apikey)
-
-### 1. Configure the Backend
+**Prerequisites:** Python 3.12 with [`uv`](https://docs.astral.sh/uv/), Node.js 22.22 or newer, a free
+[Neo4j AuraDB](https://neo4j.com/cloud/aura-free/) instance, and a [Gemini API key](https://aistudio.google.com/apikey).
 
 ```bash
+# 1. Backend
 cd backend
-cp .env.example .env        # then fill in the values below
-uv venv
-uv pip install -r requirements.txt
-```
+cp .env.example .env                     # fill in NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DATABASE, GEMINI_API_KEY
+uv venv && uv pip install -r requirements.txt
+.venv/bin/python -m scripts.seed         # synthetic data (WARNING: wipes the target database)
+.venv/bin/python -m uvicorn app.main:app --port 8000      # API docs at http://localhost:8000/docs
 
-| Variable | Description |
-|---|---|
-| `NEO4J_URI` | Aura connection URI, e.g. `neo4j+s://<id>.databases.neo4j.io` |
-| `NEO4J_USERNAME` | Usually `neo4j` |
-| `NEO4J_PASSWORD` | Password shown when the Aura instance was created |
-| `NEO4J_DATABASE` | Usually `neo4j` |
-| `GEMINI_API_KEY` | Your Gemini API key |
-| `GEMINI_MODEL` | Model id, default `gemini-3.1-flash-lite` |
-
-`.env` is git-ignored. Never commit credentials.
-
-### 2. Load the Synthetic Data
-
-```bash
-.venv/bin/python -m scripts.seed
-```
-
-> **Warning:** this deletes everything in the target database, including recorded decisions. Use a dedicated instance.
-> The data is generated with a fixed random seed, so every run produces the same graph.
-
-### 3. Run the API
-
-```bash
-.venv/bin/uvicorn app.main:app --port 8000
-.venv/bin/python -m uvicorn app.main:app --port 8000
-```
-
-Open <http://localhost:8000/docs> for the interactive API documentation.
-
-### 4. Pre-warm the Gemini Cache (Recommended Before Recording a Demo)
-
-```bash
-.venv/bin/python -m scripts.warm_cache
-```
-
-This runs the agent for Customer A at the key months and stores the results in `backend/.cache/`. Cached results load
-instantly and act as a safety net if the network or API quota fails during the demo. The cache is git-ignored, so each
-developer builds their own.
-
-### 5. Run the Frontend
-
-```bash
+# 2. Frontend (new terminal)
 cd frontend
-nvm use                    # reads .nvmrc (Node 22); skip if `node -v` already shows 22+
-npm install
-npm start                   # http://localhost:4200
+nvm use && npm install
+npm start                                # http://localhost:4200
 ```
 
-> If `npm start` says the Angular CLI needs a newer Node.js, your shell is still on an older version. With nvm installed, run `source ~/.nvm/nvm.sh && nvm use 22` first.
-
-The UI talks to `http://localhost:8000` when served from `localhost`. State is kept in the URL, so
-`?c=C_A&m=2026-04` opens Customer A at April 2026.
+- `.env` is git-ignored. Never commit credentials.
+- `scripts.warm_cache` pre-runs Gemini for Customer A's key months into `backend/.cache/` (shipped in the image), so the demo loads instantly.
+- The UI calls `http://localhost:8000` when served from `localhost`. State lives in the URL: `?v=case&c=C_A&m=2026-05` opens Customer A in May 2026.
+- If Neo4j is unreachable, the API serves `backend/data/snapshot.json`.
 
 ## Deploy to Cloud Run
 
-The `Dockerfile` builds the Angular app and serves it from the same FastAPI service (UI at `/`, API at `/api`), so there is one URL and no CORS.
-
 ```bash
 gcloud auth login
-PROJECT_ID=your-project ./deploy.sh      # reads backend/.env, deploys with `gcloud run deploy --source .`
+PROJECT_ID=your-project ./deploy.sh      # reads backend/.env and runs gcloud run deploy --source .
 ```
 
-- The image includes `backend/data/snapshot.json` (a saved copy of the graph) and `backend/.cache/` (pre-warmed Gemini answers),
-  so the demo still works if Neo4j or the Gemini quota has a bad moment.
-- `deploy.sh` passes credentials as environment variables for speed. For anything beyond a demo, use Secret Manager (`--set-secrets`).
-- `--min-instances 1` keeps one instance warm so the first visitor does not wait for the graph to load.
+- One container serves the UI at `/` and the API at `/api`, so there is one URL and no CORS.
+- `--min-instances 1 --max-instances 1`: the graph stays warm, and the live demo state (kept per instance) stays consistent.
+- `deploy.sh` passes credentials as environment variables for speed. For production, use Secret Manager (`--set-secrets`).
 
 ## API Overview
+
+All routes are under `/api` when deployed.
 
 | Method | Route | Purpose |
 |---|---|---|
 | GET | `/customers?as_of=YYYY-MM-DD` | Portfolio with score, level and signal count at a month |
-| GET | `/customers/{id}/context?as_of=` | Context Graph, signals, events and relevant policies |
-| GET | `/customers/{id}/timeline` | Score and level for every month (feeds the time-travel chart) |
-| GET | `/customers/{id}/explain?as_of=` | Gemini explanation. Add `refresh=true` to re-run, `cached_only=true` to read the cache only |
-| POST | `/customers/{id}/decision` | Record an officer's approve / reject decision |
+| GET | `/customers/{id}/context?as_of=` | Context graph, signals, events, policies, mitigations in effect |
+| GET | `/customers/{id}/timeline` | Score and level for every month |
+| GET | `/customers/{id}/explain?as_of=` | Gemini explanation (`refresh=true` to re-run) |
+| POST | `/customers/{id}/decision` | Approve / reject a proposal; an approval creates a task |
 | GET | `/decisions?customer_id=` | Audit log |
-| GET | `/portfolio/summary?as_of=` | Command Center: risk mix, exposure, industry heatmap, new High loans, monthly series |
-| POST | `/whatif` | Stress test: `industry_shocks`, `failed_companies`, `collateral_drop`. Nothing is written |
-| GET | `/companies` | Related companies ranked by dependent loans (for the contagion picker) |
-| POST | `/chat` | Portfolio assistant (Gemini with tools); returns the answer, tool calls and cited customers |
-| GET | `/backtest` | Early Warning vs. legacy rule metrics |
-| GET | `/graph/overview` | Condensed full graph used as the dimmed backdrop |
-| POST | `/admin/reload` | Reload the in-memory graph after reseeding |
+| GET | `/portfolio/summary?as_of=` | Command Center data |
+| POST | `/whatif` | Stress test (nothing is written) |
+| POST | `/chat` | Gemini portfolio assistant |
+| GET | `/contagion?as_of=` | Customers ranked by risk flowing in from their neighbours |
+| POST | `/contagion/shock` | Default cascade from `seeds` with `alpha`, `hops`, `threshold` (nothing is written) |
+| GET | `/contagion/matrix?as_of=` | Top spreaders × industry and channel × industry |
+| GET | `/contagion/source/{id}` | Borrowers currently taking risk from one source |
+| GET | `/contagion/candidates` | Companies and guarantors to shock, with exposure |
+| POST | `/news/analyze` | Gemini event extraction and linking, with an impact preview (dry run) |
+| GET | `/news/samples` | Sample headlines about entities in the portfolio |
+| GET / POST / DELETE | `/events` | List, apply or undo confirmed events |
+| GET / POST | `/tasks` | Action board. `POST /tasks/{id}/status` with `done` applies the mitigation |
+| POST | `/live/reset` | Remove every event and task (demo reset) |
+| GET | `/backtest` | Early Warning vs. legacy rule |
 
-## Limitations and Honest Notes
+## Running on Real Data (Optional)
 
-- **Synthetic data only.** No real customer data is used anywhere, and all backtest figures come from data we generated.
-- **Rules, not machine learning.** Scoring is a transparent weighted rule set. There is no trained PD model or GNN yet;
-  with only 7 labelled defaulters a trained model would not be statistically meaningful.
-- **LLM output needs review.** Gemini can still phrase an observation too strongly, for example calling a single negative
-  cash-flow period evidence of deterioration when it is not a rule signal. The panel therefore shows a
-  "Check Before Deciding" note, and the officer makes the final call.
-- **Small-model tool use.** `gemini-3.1-flash-lite` tends to loop on tool calls when given tools and a response schema in a
-  single request. The agent works around this with a bounded tool loop followed by a separate schema-constrained call.
-- **Privacy.** A real deployment would need data minimisation, access control and retention rules for the audit log.
+The demo uses synthetic data. `scripts/import_real.py` builds an **anonymised** snapshot from a bank's data warehouse
+(read-only; customer ids and names are replaced by salted hashes), and `DATA_SOURCE=real` serves it instead.
+`scripts/calibrate_contagion.py` tests whether neighbour risk predicts later default on that data. Credentials come only
+from the environment, and the resulting snapshot is git-ignored.
+
+## Limitations
+
+- **Synthetic data.** All figures in this README come from generated data.
+- **Rules, not machine learning.** Scoring is a transparent weighted rule set. There is no trained probability-of-default model yet.
+- **Simple effect models.** News and mitigation effects are documented rules (for example, a company event means 15, 45 or 90 days past due by severity), not calibrated estimates.
+- **LLM output needs review.** Gemini can phrase an observation too strongly, so the panel shows a "Check before deciding" note and the officer makes the final call.
 
 ## Roadmap
 
-- A calibrated probability-of-default model alongside the rules
-- Policy retrieval (RAG) over a full policy corpus instead of four policy records
-- Real data connectors (core banking, credit bureau) behind the existing repository layer
+1. Pilot on anonymised bank data and calibrate thresholds and contagion weights against real defaults.
+2. More contagion channels: payment transactions, supply chains, shared directors, credit bureau data.
+3. Stream news and public registries through Pub/Sub for continuous extraction.
+4. Production hardening: Firestore for live state, Secret Manager, Firebase Auth or IAP for officer identity, BigQuery for analytics.
+5. Learn from officers' decisions and measured task outcomes to rank the mitigations that work.
 
-## Hackathon Deliverables
+## Team
 
-- [ ] Proposal deck (PDF): problem, community benefit, feasibility and scalability
-- [ ] Working prototype deployed on Cloud Run or Firebase
-- [ ] Public 3-minute demo video
-
-## License
-
-To be decided by the team.
-
-## Real data and contagion (optional)
-
-The demo runs on synthetic data by default. To run on anonymised data from the bank's TiDB (read-only, nothing is written to TiDB or Neo4j):
-
-```
-cd backend && pip install pymysql
-export TIDB_HOST=... TIDB_USER=... TIDB_PASSWORD=...        # never commit these
-python -m scripts.import_real --inventory                   # what is loaded so far, per source
-python -m scripts.import_real                               # writes data/snapshot_real.json (git-ignored)
-DATA_SOURCE=real uvicorn app.main:app
-python -m scripts.calibrate_contagion --snapshot data/snapshot_real.json   # does neighbour risk predict later default?
-```
-
-**Loading more data later needs no code change.** Load files into `stg.daily_casa_txn_above_100_mil`, `stg.monthly_KHDN_SPDV`
-or `stg.monthly_casa` and re-run the import: each source adds monthly fields (`txn_in`/`txn_out`/`txn_days`, `n_products`/`product_income`,
-`casa_eod`/`n_accounts`) only for the months it covers, and transaction edges are rebuilt from every day loaded.
-By default an edge exists from the month its first transaction was seen (`--edge-since first_seen`), so the graph never looks ahead;
-until transactions from before the label period are loaded, no edges are visible at calibration dates and contagion cannot be validated.
-`--edge-since window_start` assumes edges always existed and is for demos only.
-
-`GET /contagion` and `GET /customers/{id}/contagion` return the risk flowing in from related companies, guarantors, industry and
-transaction partners (`app/contagion.py`). Relation types it does not know yet get a default weight, so a new relationship table only needs
-to emit edges in the snapshot's `edges` list.
+**EWS - GDG Hanoi** · Team leader: Dinh Huu Hoang

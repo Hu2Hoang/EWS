@@ -12,3 +12,5 @@ Neo4j-*.txt
 *.png
 backend/data/snapshot_real.json
 backend/data/live/
+docs/
+demo-video/
