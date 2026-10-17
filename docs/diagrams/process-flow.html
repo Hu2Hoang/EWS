@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Early Warning process flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#15171A; --muted:#6A7077; --line:#E3E5E8; --soft:#F4F5F6; --high:#A3262F; --mid:#B07A1F; --low:#3E7B62; --g:#1A73E8; }
+  * { box-sizing: border-box; margin: 0; }
+  body { width: 1920px; height: 1080px; background: #fff; color: var(--ink); font: 400 17px/1.4 'Hanken Grotesk', sans-serif; position: relative; overflow: hidden; }
+  h1 { position: absolute; left: 96px; top: 64px; font: 300 54px/1 Newsreader, Georgia, serif; letter-spacing: -.01em; }
+  .sub { position: absolute; left: 98px; top: 134px; color: var(--muted); font-size: 21px; }
+  .cloud { position: absolute; left: 64px; top: 196px; width: 1792px; height: 650px; border: 2px dashed #C9D7EE; border-radius: 22px; }
+  .cloud span { position: absolute; top: -15px; left: 28px; background: #fff; padding: 0 12px; color: var(--g); font-weight: 600; font-size: 16px; letter-spacing: .02em; }
+  .steps { position: absolute; left: 104px; top: 262px; display: grid; grid-template-columns: repeat(7, 206px); column-gap: 46px; }
+  .step { position: relative; height: 318px; border: 1.5px solid var(--line); border-radius: 16px; padding: 22px 20px; background: #fff; display: flex; flex-direction: column; }
+  .step + .step::before { content: ''; position: absolute; left: -44px; top: 140px; width: 38px; height: 2px; background: var(--ink); }
+  .step + .step::after { content: ''; position: absolute; left: -12px; top: 135px; border: 6px solid transparent; border-left: 9px solid var(--ink); }
+  .n { width: 34px; height: 34px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 16px; }
+  .step h2 { font: 400 27px/1.1 Newsreader, Georgia, serif; margin: 16px 0 10px; }
+  .step p { color: var(--muted); font-size: 15.5px; line-height: 1.42; flex: 1; }
+  .tag { align-self: flex-start; margin-top: 12px; font-size: 13px; font-weight: 600; padding: 4px 11px; border-radius: 999px; border: 1.5px solid currentColor; }
+  .tag.g { color: var(--g); } .tag.n4 { color: var(--muted); } .tag.r { color: var(--high); } .tag.h { color: var(--low); }
+  .step.gem { border-color: #BCD3F7; background: #F7FAFF; }
+  .step.risk { border-color: #E9C9CB; background: #FDF8F8; }
+  .step.human { border-color: #C8DDD3; background: #F7FBF9; }
+  .dots { display: flex; gap: 5px; margin: 6px 0 0; } .dots i { width: 9px; height: 9px; border-radius: 50%; }
+  svg.loop { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .loop-label { position: absolute; left: 620px; top: 686px; width: 800px; text-align: center; font-size: 18px; }
+  .loop-label b { font-weight: 600; }
+  .loop-label small { display: block; color: var(--muted); font-size: 15px; margin-top: 4px; }
+  .news { position: absolute; left: 104px; top: 712px; width: 400px; padding: 14px 18px; border-radius: 14px; background: #F7FAFF; border: 1.5px solid #BCD3F7; font-size: 15.5px; }
+  .news b { color: var(--g); }
+  .stats { position: absolute; left: 96px; top: 880px; width: 1728px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1.5px solid var(--line); }
+  .stat { padding: 22px 24px 0 0; } .stat + .stat { padding-left: 28px; border-left: 1.5px solid var(--line); }
+  .stat b { font: 300 46px/1 Newsreader, Georgia, serif; } .stat b span { font: 400 18px 'Hanken Grotesk'; color: var(--muted); }
+  .stat p { color: var(--muted); font-size: 15px; margin-top: 8px; }
+  .foot { position: absolute; right: 96px; top: 1036px; color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+  <h1>How Early Warning works</h1>
+  <p class="sub">One closed loop: from the first weak signal to a measured action, with a human deciding every step.</p>
+
+  <div class="cloud"><span>GOOGLE CLOUD RUN · one service: Angular UI + FastAPI, built with Cloud Build</span></div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="n">1</div><h2>Ingest</h2>
+      <p>Loans, monthly cash flow, collateral valuations, related companies, guarantors, industry trends.</p>
+      <span class="tag n4">Bank data</span>
+    </div>
+    <div class="step">
+      <div class="n">2</div><h2>Knowledge graph</h2>
+      <p>Everything linked. Each decision gets a small context graph: only what matters, at that month.</p>
+      <span class="tag n4">Neo4j</span>
+    </div>
+    <div class="step">
+      <div class="n">3</div><h2>Detect</h2>
+      <p>6 policy-cited rules set the score and risk level for any month, months before 30 days past due.</p>
+      <span class="tag n4">Deterministic rules</span>
+    </div>
+    <div class="step risk">
+      <div class="n">4</div><h2>Spread</h2>
+      <p>Risk flows along relationships. Click any node to default it and watch the domino cascade.</p>
+      <div class="dots"><i style="background:var(--high)"></i><i style="background:var(--mid)"></i><i style="background:var(--mid)"></i><i style="background:var(--low)"></i></div>
+      <span class="tag r">Contagion engine</span>
+    </div>
+    <div class="step gem">
+      <div class="n">5</div><h2>Explain</h2>
+      <p>An agent calls tools and cites graph nodes and policies. Every claim is verified; names are masked.</p>
+      <span class="tag g">Gemini</span>
+    </div>
+    <div class="step human">
+      <div class="n">6</div><h2>Decide</h2>
+      <p>The credit officer approves or rejects each proposal. Every decision is written to the audit log.</p>
+      <span class="tag h">Human in the loop</span>
+    </div>
+    <div class="step human">
+      <div class="n">7</div><h2>Act &amp; measure</h2>
+      <p>Tasks with deadlines. A completed mitigation enters the graph, and the rules measure its effect.</p>
+      <span class="tag h">Action board</span>
+    </div>
+  </div>
+
+  <svg class="loop" viewBox="0 0 1920 1080">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#15171A"/></marker>
+      <marker id="ahg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <path d="M0 0 L10 5 L0 10 z" fill="#1A73E8"/></marker>
+    </defs>
+    <!-- feedback loop: step 7 back to step 2 -->
+    <path d="M1713 582 V 650 Q 1713 666 1697 666 H 461 Q 445 666 445 650 V 588" fill="none" stroke="#15171A" stroke-width="2.2" stroke-dasharray="8 7" marker-end="url(#ah)"/>
+    <!-- news lane: into step 2 -->
+    <path d="M504 772 H 540 Q 556 772 556 756 V 672" fill="none" stroke="#1A73E8" stroke-width="2.2"/><circle cx="556" cy="666" r="6" fill="#1A73E8"/>
+  </svg>
+
+  <div class="loop-label"><b>Feedback loop:</b> confirmed news and completed mitigations become reversible graph overlays
+    <small>the whole portfolio is re-scored live, and every change can be undone</small></div>
+
+  <div class="news"><b>Gemini · news to graph</b><br>English or Vietnamese headlines → entity, event, severity → linked to a graph node → officer previews the impact and confirms</div>
+
+  <div class="stats">
+    <div class="stat"><b>120 <span>vs 61 days</span></b><p>Average warning before default, vs the 30-days-past-due rule</p></div>
+    <div class="stat"><b>0.84 <span>vs 0.43</span></b><p>Precision of the warnings</p></div>
+    <div class="stat"><b>14 <span>vs 96</span></b><p>False alarms on 1,200 loans</p></div>
+    <div class="stat"><b>0 <span>scores by the LLM</span></b><p>Gemini explains and proposes; rules decide the risk level</p></div>
+  </div>
+  <p class="foot">Backtest on synthetic data: it shows the mechanism, not real-world performance.</p>
+</body>
+</html>

@@ -32,6 +32,7 @@ class ActionType(str, Enum):
     request_additional_collateral = "request_additional_collateral"
     suspend_disbursement = "suspend_disbursement"
     review_related_exposure = "review_related_exposure"
+    restructure_loan = "restructure_loan"
     no_action = "no_action"
 
 
@@ -86,14 +87,23 @@ def _compact_context(ctx: dict) -> dict:
     }
 
 
+FALLBACK_ACTIONS = [  # signal -> the mitigation the policy points to, used when no LLM answer is available
+    ("collateral_drop", "request_additional_collateral", "Collateral fell below the P-22 threshold; restore coverage.", "P-22"),
+    ("related_overdue", "review_related_exposure", "A related company is past due; P-31 asks to review shared exposure.", "P-31"),
+    ("dpd", "restructure_loan", "The loan is past due; P-08 allows rescheduling to restore repayment.", "P-08"),
+]
+
+
 def _fallback(ctx: dict, reason: str) -> dict:
     a = ctx["assessment"]
     return {
         "summary": f"{a['level']} risk (score {a['score']}) with {a['signal_count']} early-warning signals.",
         "findings": [{"statement": s["label"], "evidence_ids": s["evidence"], "policy_id": s["policy"]}
                      for s in a["signals"]],
-        "recommended_actions": [{"action": "increase_monitoring", "rationale": "Per P-17 when 3+ signals fire.",
-                                 "policy_id": "P-17"}] if a["signal_count"] >= 3 else [],
+        "recommended_actions": ([{"action": "increase_monitoring", "rationale": "Per P-17 when 3+ signals fire.",
+                                  "policy_id": "P-17"}] if a["points"] >= 3 else [])
+                               + [{"action": act, "rationale": why, "policy_id": pol} for code, act, why, pol in FALLBACK_ACTIONS
+                                  if code in {s["code"] for s in a["signals"]}],
         "limitations": f"Rule-generated explanation, no LLM used ({reason}).",
     }
 

@@ -1,5 +1,5 @@
 """Context Builder: builds the Context Graph (the subgraph relevant to one decision) as of a given month."""
-from app.scoring import evaluate, month_floor
+from app.scoring import active, evaluate, month_floor
 
 
 def build_context(history: dict, customer_id: str, as_of: str) -> dict:
@@ -31,8 +31,9 @@ def build_context(history: dict, customer_id: str, as_of: str) -> dict:
     for rel in c["related"]:
         if rel["since"] <= as_of:
             dpd = next((s["dpd"] for s in reversed(rel["snapshots"]) if s["month"] <= as_of), 0)
-            nodes.append({"id": rel["id"], "type": "Company", "label": rel["name"], "props": {"dpd": dpd}})
-            edges.append({"source": c["id"], "target": rel["id"], "type": "RELATED_TO"})
+            fenced = not active(rel, as_of)
+            nodes.append({"id": rel["id"], "type": "Company", "label": rel["name"], "props": {"dpd": dpd, "ring_fenced": fenced}})
+            edges.append({"source": c["id"], "target": rel["id"], "type": "RING_FENCED" if fenced else "RELATED_TO"})
     for g in c["guarantors"]:
         nodes.append({"id": g["id"], "type": "Guarantor", "label": g["name"], "props": {}})
         edges.append({"source": g["id"], "target": c["loan_id"], "type": "GUARANTEES"})
@@ -52,6 +53,7 @@ def build_context(history: dict, customer_id: str, as_of: str) -> dict:
         "assessment": result,
         "graph": {"nodes": nodes, "edges": edges},
         "events": sorted(events, key=lambda e: e["date"]),
+        "mitigations": [m for m in c.get("mitigations", []) if m["as_of"] <= as_of],
         "policies": [history["policies"][p] for p in sorted(policies) if p in history["policies"]],
         "history": {"snapshots": snaps, "valuations": [v for v in c["valuations"] if v["date"] <= as_of]},
     }

@@ -9,13 +9,20 @@ THRESHOLDS = {
     "collateral_drop": 0.09,    # collateral value vs. peak of the last 6 valuations
     "dpd": 10,                  # P-08
     "industry_growth": -3.0,    # industry growth (%), two consecutive months
+    "deposit_coverage": 0.005,  # P-40: average deposit / credit balance, 6 consecutive months (needs deposit + credit in snapshots)
 }
 WEIGHTS = {"revenue_drop": 20, "negative_cashflow": 20, "related_overdue": 15,
-           "collateral_drop": 15, "dpd": 20, "industry_downturn": 10}
+           "collateral_drop": 15, "dpd": 20, "industry_downturn": 10, "low_deposit_coverage": 25}
+POINTS = {"low_deposit_coverage": 2}  # P-40: counts as two signals towards the P-17 level; every other signal counts as one
 
 
 def month_floor(as_of: str) -> str:
     return as_of[:7] + "-01"
+
+
+def active(rel: dict, as_of: str) -> bool:
+    """A relation counts until it is ring-fenced (`until`, set by a completed mitigation task)."""
+    return as_of < rel.get("until", "9999-12-31")
 
 
 def _avg(xs):
@@ -46,8 +53,17 @@ def evaluate(cust: dict, trends: dict, as_of: str) -> dict:
         add("negative_cashflow", "Negative net cash flow for 2 consecutive periods",
             {"last_two": [s["net_cashflow"] for s in snaps[-2:]]}, [cust["id"]], "P-17")
 
+    if n >= 6 and all("deposit" in s and "credit" in s for s in snaps[-6:]):
+        cover = [s["deposit"] / max(s["credit"], 1) for s in snaps[-6:]]
+        if all(c < THRESHOLDS["deposit_coverage"] for c in cover):
+            add("low_deposit_coverage", "Deposit balance below 0.5% of credit for 6 months",
+                {"coverage_pct": [round(c * 100, 2) for c in cover], "credit": round(snaps[-1]["credit"])},
+                [cust["id"]], "P-40")
+
     overdue = []
     for rel in cust["related"]:
+        if not active(rel, as_of):
+            continue
         latest = [s for s in rel["snapshots"] if s["month"] <= as_of]
         if latest and latest[-1]["dpd"] > 0:
             overdue.append({"company": rel["id"], "name": rel["name"], "dpd": latest[-1]["dpd"]})
@@ -75,12 +91,14 @@ def evaluate(cust: dict, trends: dict, as_of: str) -> dict:
             {"growth_pct": [t["growth_pct"] for t in tr]}, [cust["industry"]], "P-17")
 
     count = len(signals)
+    points = sum(POINTS.get(s["code"], 1) for s in signals)
     return {
         "as_of": as_of,
         "signals": signals,
         "signal_count": count,
+        "points": points,
         "score": min(100, sum(s["weight"] for s in signals)),
-        "level": "High" if count >= 3 else "Medium" if count == 2 else "Low",
+        "level": "High" if points >= 3 else "Medium" if points == 2 else "Low",
         "legacy_flag": bool(snaps and any(s["dpd"] >= 30 for s in snaps)),
     }
 

@@ -31,6 +31,9 @@ Synthetic bank data (1,200 loans) ──► Knowledge Graph (Neo4j AuraDB)
 |---|---|
 | **Command Center** | Portfolio KPIs, risk mix over time with a **Play Timeline** button, industry heatmap, and the loans that newly turned High risk this month |
 | **Case Review** | One loan: Knowledge Graph with its Context Graph lit up, time-travel slider, rule signals, Gemini analysis with cited evidence, approve / reject, audit log |
+| **Contagion Lab** | Make any counterparty (or borrower) default and watch the risk spread wave by wave through shared companies, guarantors and transaction partners. Borrowers pushed over a default threshold fall in the next round (domino defaults). Sliders for contagion strength, path length and threshold; click any node to add it to the shock. Below it, the **contagion matrix**: which sources spread risk into which industry today, click a cell to see who receives it |
+| **News to Graph** | Paste a headline or article (English or Vietnamese). Gemini extracts the credit-risk events, the entities are linked to graph nodes through the PII tokens, and the impact is previewed before anything changes. The officer applies or dismisses each event; applied events re-score the portfolio and can be undone. *Play news feed* replays sample headlines as a live stream |
+| **Action Board** | Approved actions become tasks with an SLA (Kanban, drag and drop). Completing a task applies the mitigation (collateral top-up, ring-fencing a past-due related company, loan rescheduling) and the rules measure what it bought: score, level, signals cleared, contagion inflow |
 | **Stress Test** | What-if lab: industry downturn, related-company failure, collateral shock. The same rules re-score the portfolio and show which loans move up a level |
 | **Ask Gemini** | Chat with the portfolio. Gemini answers by calling typed tools (find customers, summarise a customer, run a stress test) and links every answer to cases |
 
@@ -41,6 +44,9 @@ Synthetic bank data (1,200 loans) ──► Knowledge Graph (Neo4j AuraDB)
   anything that does not.
 - **Working memory, not a data dump.** The Context Graph is the small subgraph relevant to one decision at one point in time.
 - **Human in the loop.** Actions are proposals. Approvals and rejections are written to an audit log.
+- **Closed loop, reversible.** Confirmed news events and completed mitigations are live overlays on top of the loaded data
+  (`backend/app/overlays.py`, stored in `backend/data/live/`). Neo4j is never modified, every overlay can be undone, and
+  `POST /live/reset` returns to the loaded data.
 - **Graceful degradation.** If Gemini is unavailable the API returns a rule-generated explanation instead of failing.
   If Neo4j is unreachable the API serves the last saved snapshot of the graph.
 - **PII stays home.** Names of customers, related companies and guarantors are replaced by tokens before any text goes to
@@ -181,6 +187,7 @@ uv pip install -r requirements.txt
 
 ```bash
 .venv/bin/uvicorn app.main:app --port 8000
+.venv/bin/python -m uvicorn app.main:app --port 8000
 ```
 
 Open <http://localhost:8000/docs> for the interactive API documentation.
@@ -268,3 +275,27 @@ PROJECT_ID=your-project ./deploy.sh      # reads backend/.env, deploys with `gcl
 ## License
 
 To be decided by the team.
+
+## Real data and contagion (optional)
+
+The demo runs on synthetic data by default. To run on anonymised data from the bank's TiDB (read-only, nothing is written to TiDB or Neo4j):
+
+```
+cd backend && pip install pymysql
+export TIDB_HOST=... TIDB_USER=... TIDB_PASSWORD=...        # never commit these
+python -m scripts.import_real --inventory                   # what is loaded so far, per source
+python -m scripts.import_real                               # writes data/snapshot_real.json (git-ignored)
+DATA_SOURCE=real uvicorn app.main:app
+python -m scripts.calibrate_contagion --snapshot data/snapshot_real.json   # does neighbour risk predict later default?
+```
+
+**Loading more data later needs no code change.** Load files into `stg.daily_casa_txn_above_100_mil`, `stg.monthly_KHDN_SPDV`
+or `stg.monthly_casa` and re-run the import: each source adds monthly fields (`txn_in`/`txn_out`/`txn_days`, `n_products`/`product_income`,
+`casa_eod`/`n_accounts`) only for the months it covers, and transaction edges are rebuilt from every day loaded.
+By default an edge exists from the month its first transaction was seen (`--edge-since first_seen`), so the graph never looks ahead;
+until transactions from before the label period are loaded, no edges are visible at calibration dates and contagion cannot be validated.
+`--edge-since window_start` assumes edges always existed and is for demos only.
+
+`GET /contagion` and `GET /customers/{id}/contagion` return the risk flowing in from related companies, guarantors, industry and
+transaction partners (`app/contagion.py`). Relation types it does not know yet get a default weight, so a new relationship table only needs
+to emit edges in the snapshot's `edges` list.

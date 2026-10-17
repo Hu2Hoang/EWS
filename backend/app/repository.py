@@ -4,12 +4,15 @@ All `as_of` filtering then happens in Python on this structure, so the Context B
 scoring and backtest share a single source of data.
 """
 import json
+import os
 import threading
 from pathlib import Path
 
+from app import contagion, overlays
 from app.db import run
 
 SNAPSHOT = Path(__file__).resolve().parent.parent / "data" / "snapshot.json"
+SNAPSHOT_REAL = SNAPSHOT.with_name("snapshot_real.json")
 
 
 def _by(rows, key):
@@ -20,7 +23,8 @@ def _by(rows, key):
 
 
 _lock = threading.RLock()  # the startup preload and the first requests must not load the graph twice
-_data: dict | None = None
+_base: dict | None = None  # the data as loaded
+_data: dict | None = None  # the base plus the live overlays (confirmed news events, completed mitigations)
 
 
 def load_all() -> dict:
@@ -28,16 +32,26 @@ def load_all() -> dict:
     global _data
     with _lock:
         if _data is None:
+            _data = overlays.apply_all(base())
+        return _data
+
+
+def base() -> dict:
+    global _base
+    with _lock:
+        if _base is None and os.getenv("DATA_SOURCE") == "real":
+            _base = json.loads(SNAPSHOT_REAL.read_text())  # anonymised real data; Neo4j is not touched
+        if _base is None:
             try:
-                _data = _load_from_neo4j()
+                _base = _load_from_neo4j()
                 SNAPSHOT.parent.mkdir(exist_ok=True)
-                SNAPSHOT.write_text(json.dumps(_data))
+                SNAPSHOT.write_text(json.dumps(_base))
             except Exception as e:
                 if not SNAPSHOT.exists():
                     raise
                 print(f"Neo4j unavailable ({type(e).__name__}); serving the saved snapshot", flush=True)
-                _data = json.loads(SNAPSHOT.read_text())
-        return _data
+                _base = json.loads(SNAPSHOT.read_text())
+        return _base
 
 
 def _load_from_neo4j() -> dict:
@@ -99,8 +113,30 @@ def _load_from_neo4j() -> dict:
     return {"customers": customers, "industry_trends": trends, "policies": policies}
 
 
-def reload():
+_memo: dict = {}
+
+
+def memo(key, compute):
+    """Caches an expensive result computed from the loaded data (a 20k-customer portfolio takes seconds to re-score).
+    Cleared whenever the data is reloaded."""
+    with _lock:
+        if key not in _memo:
+            _memo[key] = compute()
+        return _memo[key]
+
+
+def refresh() -> dict:
+    """Re-applies the live overlays to the loaded data (no database round trip) and drops every derived cache."""
     global _data
     with _lock:
         _data = None
+        _memo.clear()
+        contagion._cache.clear()
         return load_all()
+
+
+def reload():
+    global _base
+    with _lock:
+        _base = None
+        return refresh()

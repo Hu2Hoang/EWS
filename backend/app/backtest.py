@@ -4,6 +4,9 @@ from datetime import date
 from app.scoring import evaluate, months_of
 
 
+UNLABELED = ("unlabeled", "already_npl")  # real data: customers with no usable default label are not scored as healthy
+
+
 def _days(a: str, b: str) -> int:
     return (date.fromisoformat(b) - date.fromisoformat(a)).days
 
@@ -20,6 +23,8 @@ def timeline(cust: dict, trends: dict) -> list[dict]:
 def run_backtest(history: dict) -> dict:
     rows, trends = [], history["industry_trends"]
     for cid, c in history["customers"].items():
+        if c["profile"] in UNLABELED:
+            continue
         tl = timeline(c, trends)
         ew = next((t["month"] for t in tl if t["level"] == "High"), None)
         rows.append({"id": cid, "name": c["name"], "profile": c["profile"], "early_warning": ew,

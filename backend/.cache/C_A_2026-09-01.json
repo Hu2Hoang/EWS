@@ -2,7 +2,7 @@
  "customer_id": "C_A",
  "as_of": "2026-09-01",
  "risk_level": "High",
- "score": 100,
+ "score": 95,
  "source": "gemini",
  "model": "gemini-3.1-flash-lite",
  "tool_calls": [
@@ -21,66 +21,83 @@
   {
    "tool": "get_policy",
    "args": {
-    "policy_id": "P-31"
+    "policy_id": "P-22"
+   }
+  },
+  {
+   "tool": "get_policy",
+   "args": {
+    "policy_id": "P-08"
+   }
+  },
+  {
+   "tool": "get_shared_company_exposure",
+   "args": {
+    "company_id": "CP002"
    }
   }
  ],
  "privacy": {
   "pii_masked": true,
-  "replacements": 8
+  "replacements": 14
  },
- "fingerprint": "4721f9e3cb3b",
- "summary": "Customer A is currently classified as High Risk due to multiple early-warning signals, including a 39% revenue drop, negative cash flow, and 90 days past due on their loan. The situation is further complicated by a related company, An Phat Garment Co., being 65 days past due, indicating potential contagion risk.",
+ "fingerprint": "6ee3fd2b86d1",
+ "summary": "Customer A is currently classified as High Risk due to multiple early-warning signals, including a 38.6% revenue decline, consecutive negative cash flows, a 9.8% drop in collateral value, and 90 days past due. The customer operates in the Seafood industry, which is currently experiencing a downturn, and has a ring-fenced relationship with An Phat Garment Co., which is also past due.",
  "findings": [
   {
-   "statement": "Customer A has experienced a 38.6% drop in 90-day revenue compared to the baseline.",
+   "statement": "Customer A has experienced a 38.6% drop in 90-day revenue compared to the baseline average.",
    "evidence_ids": [
     "C_A"
    ],
    "policy_id": "P-17"
   },
   {
-   "statement": "The customer has recorded negative net cash flow for two consecutive periods (-1392.1 and -658.1).",
+   "statement": "The customer has reported negative net cash flow for two consecutive periods of -1392.1 and -658.1.",
    "evidence_ids": [
     "C_A"
    ],
    "policy_id": "P-17"
   },
   {
-   "statement": "Related company An Phat Garment Co. is currently 65 days past due.",
-   "evidence_ids": [
-    "CP002"
-   ],
-   "policy_id": "P-31"
-  },
-  {
-   "statement": "Collateral value for the loan has decreased by 9.8% from its peak.",
+   "statement": "Collateral value for the machinery has decreased by 9.8% from its peak of 63761 to 57485.",
    "evidence_ids": [
     "KC_A"
    ],
    "policy_id": "P-22"
   },
   {
-   "statement": "The loan for Customer A has reached 90 days past due.",
+   "statement": "The loan is currently 90 days past due.",
    "evidence_ids": [
     "LC_A"
    ],
    "policy_id": "P-08"
+  },
+  {
+   "statement": "The Seafood industry is in a downturn with a growth percentage of -7.9%.",
+   "evidence_ids": [
+    "Seafood"
+   ],
+   "policy_id": "P-17"
   }
  ],
  "recommended_actions": [
   {
-   "action": "increase_monitoring",
-   "rationale": "The customer exhibits more than 3 early-warning signals, requiring immediate escalation to High Risk and monthly monitoring per policy P-17.",
-   "policy_id": "P-17"
+   "action": "suspend_disbursement",
+   "rationale": "The loan is High Risk with 90 days past due and negative cash flow, requiring a suspension of disbursements per policy P-08.",
+   "policy_id": "P-08"
   },
   {
-   "action": "review_related_exposure",
-   "rationale": "Due to the related company An Phat Garment Co. being past due, a formal review of contagion risk and repayment capacity is required per policy P-31.",
-   "policy_id": "P-31"
+   "action": "request_additional_collateral",
+   "rationale": "Collateral value has dropped significantly, necessitating a request for additional collateral or a credit limit reduction per policy P-22.",
+   "policy_id": "P-22"
+  },
+  {
+   "action": "increase_monitoring",
+   "rationale": "The customer has triggered more than 3 early-warning signals, requiring monthly monitoring per policy P-17.",
+   "policy_id": "P-17"
   }
  ],
- "limitations": "The officer should verify if the guarantor Guarantor 43 has sufficient liquidity to cover the loan exposure given the deteriorating financial health of the customer and the related party.",
+ "limitations": "The credit officer should verify the current status of the ring-fenced relationship with An Phat Garment Co. and assess if the industry downturn is expected to persist, as this may impact the recovery of the collateral value.",
  "verification": {
   "ok": true,
   "issues": []

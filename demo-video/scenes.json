@@ -1,0 +1,57 @@
+[
+  {
+    "id": "s01_intro",
+    "caption": "The problem: bad loans are found too late",
+    "narration": "Banks call a loan bad once it is thirty days past due. By then it is too late, and nobody sees how one failure drags down the borrowers around it. Early Warning watches a graph of twelve hundred loans and flags trouble months earlier. The bars are our warnings; the orange line is the legacy rule, always behind."
+  },
+  {
+    "id": "s02_case",
+    "caption": "1 · Detect: policy-cited early-warning signals",
+    "narration": "This is Customer A, a seafood business. Grey is the full knowledge graph; the bright part is the context for this decision. From April to May, five warning signals fire, each tied to a credit policy, including a related company that is past due."
+  },
+  {
+    "id": "s03_gemini",
+    "caption": "2 · Explain: Gemini cites graph evidence, never scores",
+    "narration": "Gemini explains the alert, but never sets the score. It calls tools to read the graph and the policies, and every finding cites a node and a policy. Invalid references are rejected, and customer names are masked before reaching the model."
+  },
+  {
+    "id": "s04_contagion",
+    "caption": "3 · Simulate: what if the partner defaults?",
+    "narration": "But risk spreads. What if that partner, An Phat Garment, defaults? The contagion lab pushes the shock along the graph, wave by wave: eight borrowers hit, four newly on watch, four hundred billion dong touched."
+  },
+  {
+    "id": "s05_domino",
+    "caption": "3 · Simulate: domino defaults, round by round",
+    "narration": "Any node can fail. Here the largest healthy counterparty defaults. A borrower pushed over the threshold fails in the next round, in red, and spreads it further. Every parameter is live."
+  },
+  {
+    "id": "s06_matrix",
+    "caption": "3 · Simulate: the contagion matrix",
+    "narration": "The contagion matrix shows who spreads risk into which industry, so the bank knows whom to ring-fence first."
+  },
+  {
+    "id": "s07_news",
+    "caption": "4 · React: Gemini turns news into graph events",
+    "narration": "Risk also arrives as news, here in Vietnamese. Gemini extracts the event, its severity and the company, and links it to the exact graph node. The officer previews the impact, applies it, and the portfolio is re-scored."
+  },
+  {
+    "id": "s08_act",
+    "caption": "5 · Act: proposals become tasks with deadlines",
+    "narration": "Now we act. On Customer A, proposals become tasks with deadlines: restore the collateral, and ring-fence the failing partner."
+  },
+  {
+    "id": "s09_board",
+    "caption": "5 · Act: every action's effect is measured",
+    "narration": "When a task is done, the mitigation enters the graph and the same rules measure the result. Collateral restored: score eighty down to sixty-five. Partner ring-fenced: down to fifty, contagion halved. Still high risk, because sales keep falling, and we say so honestly."
+  },
+  {
+    "id": "s10_assistant",
+    "caption": "Ask the portfolio anything",
+    "narration": "And anyone can just ask. Gemini answers through tools and cites the customers it found."
+  },
+  {
+    "id": "s11_close",
+    "caption": "Gemini · Cloud Run · Cloud Build",
+    "narration": "On our synthetic backtest, every defaulter is caught, with a hundred and twenty days of warning instead of sixty-one, and eighty-four percent precision instead of forty-three. Early Warning runs on Cloud Run with Gemini."
+  }
+]
