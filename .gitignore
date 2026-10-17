@@ -5,3 +5,7 @@ __pycache__/
 node_modules/
 backend/static
 .claude/
+backend/data/snapshot_real.json
+backend/data/live/
+docs/
+demo-video/

@@ -12,11 +12,12 @@ set -a; source backend/.env; set +a   # NEO4J_*, GEMINI_*
 gcloud config set project "$PROJECT_ID"
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
 
+# One instance: live demo state (confirmed news events, tasks) is kept per instance in backend/data/live/.
 # Secrets go in as env vars here for speed. For production use Secret Manager (--set-secrets).
 gcloud run deploy "$SERVICE" \
   --source . \
   --region "$REGION" \
   --allow-unauthenticated \
-  --memory 1Gi --cpu 1 --min-instances 1 --timeout 120 \
+  --memory 1Gi --cpu 1 --min-instances 1 --max-instances 1 --timeout 120 \
   --set-env-vars "NEO4J_URI=$NEO4J_URI,NEO4J_USERNAME=$NEO4J_USERNAME,NEO4J_PASSWORD=$NEO4J_PASSWORD,NEO4J_DATABASE=${NEO4J_DATABASE:-neo4j},GEMINI_API_KEY=$GEMINI_API_KEY,GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.1-flash-lite}"
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'

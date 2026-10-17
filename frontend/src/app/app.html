@@ -29,6 +29,11 @@
 @switch (view()) {
 @case ('overview') { <app-command-center (openCase)="openCase($event.id, $event.month)" (openIndustry)="openIndustry($event)" /> }
 @case ('stress') { <app-stress-test (openCase)="openCase($event)" /> }
+@case ('contagion') { <app-contagion-lab [months]="months()" [start]="labStart()" (openCase)="openCase($event.id, $event.month)" /> }
+@case ('events') {
+  <app-live-events [asOf]="asOf()" (openCase)="openCase($event.id, $event.month)" (openContagion)="simulate($event.id, $event.month)" (changed)="onChanged($event)" />
+}
+@case ('actions') { <app-action-board (openCase)="openCase($event.id, $event.month)" (changed)="onChanged($event)" /> }
 @case ('case') {
 <div class="layout">
   <section class="card list" aria-labelledby="portfolio-h">
@@ -63,7 +68,10 @@
       <div class="chips" aria-hidden="true">
         @for (l of legend; track l.type) { <span class="chip"><i class="t-{{ l.type }}"></i>{{ l.label }}</span> }
       </div>
-      <p class="hint">Faded: full knowledge graph. Bright: context for this decision. Red ring: rule signal.</p>
+      <p class="hint">Faded: full knowledge graph. Bright: context for this decision. Red ring: rule signal. Click a node to simulate its default.</p>
+      @if (focusNode(); as n) {
+        <button type="button" class="btn ok sim" (click)="simulate(n.id)">Simulate {{ n.label }} defaulting</button>
+      }
     </div>
 
     <div class="card time">
@@ -158,6 +166,35 @@
           <p class="muted tiny">The agent reads the context graph, looks up policies and checks contagion through shared companies. It never changes the score.</p>
         }
       </div>
+
+      <h3>Action plan <small>Tasks on the action board</small></h3>
+      @for (t of caseTasks(); track t.id) {
+        <div class="act">
+          <div class="act-top"><b>{{ actionLabels[t.action] ?? t.action }}</b><span class="tag">{{ t.status === 'todo' ? 'To do' : t.status === 'doing' ? 'In progress' : 'Done' }}</span></div>
+          @if (t.result; as r) {
+            <small>{{ r.effect }}. Score {{ r.score_before }} → {{ r.score_after }}, {{ r.level_before }} → {{ r.level_after }}.</small>
+          } @else {
+            <small>Expected: score {{ t.expected.score_before }} → {{ t.expected.score_after }}{{ t.expected.level_after !== t.expected.level_before ? ', ' + t.expected.level_before + ' → ' + t.expected.level_after : '' }}. {{ t.effect }}.</small>
+          }
+          <div class="btns">
+            @if (t.status !== 'done') { <button type="button" class="btn ok" (click)="setTask(t, 'done')">Complete</button> }
+            @else { <button type="button" class="btn ghost" (click)="setTask(t, 'doing')">Reopen (undo)</button> }
+          </div>
+        </div>
+      }
+      <div class="add-task">
+        <label class="sr" for="new-action">New task</label>
+        <select id="new-action" name="new-action" [ngModel]="newAction()" (ngModelChange)="newAction.set($event)">
+          @for (a of actionIds; track a) { <option [value]="a">{{ actionLabels[a] }}</option> }
+        </select>
+        <button type="button" class="btn ghost" (click)="addTask()">Add task</button>
+      </div>
+      <button type="button" class="link sim-link" (click)="simulate(selectedId())">Simulate this borrower defaulting: who would it take down?</button>
+
+      @if (c.mitigations?.length) {
+        <h3>Mitigations in effect</h3>
+        @for (m of c.mitigations; track m.id) { <div class="log"><b class="approved">{{ actionLabels[m.action] ?? m.action }}</b> {{ m.effect }}<small>Since {{ month(m.as_of) }}</small></div> }
+      }
 
       <h3>Audit log</h3>
       @for (d of decisions(); track d.id) {

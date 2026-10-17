@@ -1,25 +1,24 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Api, Backtest, Context, CustomerRow, Decision, Explanation, Overview, Signal, TimelinePoint } from './api';
+import { Api, Backtest, Context, CustomerRow, Decision, Explanation, Overview, Signal, Task, TimelinePoint } from './api';
+import { ActionBoard } from './action-board';
 import { Assistant } from './assistant';
 import { CommandCenter } from './command-center';
+import { ContagionLab } from './contagion-lab';
 import { GraphView } from './graph-view';
+import { ACTION_LABELS } from './labels';
+import { LiveEvents } from './live-events';
 import { StressTest } from './stress-test';
 
-export const ACTION_LABELS: Record<string, string> = {
-  increase_monitoring: 'Increase Monitoring',
-  request_additional_collateral: 'Request Additional Collateral',
-  suspend_disbursement: 'Suspend Disbursement',
-  review_related_exposure: 'Review Related Exposure',
-  no_action: 'No Action Needed',
-};
+export { ACTION_LABELS };
 export const LEGEND = [
   { type: 'Customer', label: 'Customer' }, { type: 'Loan', label: 'Loan' }, { type: 'Collateral', label: 'Collateral' },
   { type: 'Industry', label: 'Industry' }, { type: 'Company', label: 'Related Co.' },
   { type: 'Guarantor', label: 'Guarantor' }, { type: 'RiskEvent', label: 'Risk Event' },
 ];
 const DEFAULT_CUSTOMER = 'C_A';
-const VIEWS = ['overview', 'case', 'stress'] as const;
+const VIEWS = ['overview', 'case', 'contagion', 'events', 'actions', 'stress'] as const;
+const SHOCKABLE = ['Customer', 'Company', 'Guarantor'];
 type View = (typeof VIEWS)[number];
 const LIST_CAP = 150;
 const RING = 2 * Math.PI * 26;
@@ -30,7 +29,7 @@ const dateTimeFmt = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', time
 
 @Component({
   selector: 'app-root',
-  imports: [FormsModule, GraphView, CommandCenter, StressTest, Assistant],
+  imports: [FormsModule, GraphView, CommandCenter, StressTest, Assistant, ContagionLab, LiveEvents, ActionBoard],
   templateUrl: './app.html',
 })
 export class App {
@@ -53,15 +52,27 @@ export class App {
   view = signal<View>('overview');
   toast = signal('');
   error = signal('');
+  caseTasks = signal<Task[]>([]);
+  newAction = signal('request_additional_collateral');
+  labStart = signal<{ month: string; seeds: string[] } | null>(null);
+  private toastTimer?: ReturnType<typeof setTimeout>;
 
   actionLabels = ACTION_LABELS;
+  actionIds = Object.keys(ACTION_LABELS).filter((a) => a !== 'no_action');
   legend = LEGEND;
   levels = ['All', 'High', 'Medium', 'Low'] as const;
   tabs: { id: View; label: string }[] = [
-    { id: 'overview', label: 'Command center' }, { id: 'case', label: 'Case review' }, { id: 'stress', label: 'Stress test' },
+    { id: 'overview', label: 'Command center' }, { id: 'case', label: 'Case review' }, { id: 'contagion', label: 'Contagion lab' },
+    { id: 'events', label: 'News to graph' }, { id: 'actions', label: 'Action board' }, { id: 'stress', label: 'Stress test' },
   ];
 
   asOf = computed(() => this.timeline()[this.idx()]?.month ?? '');
+  months = computed(() => this.timeline().map((p) => p.month));
+  /** The graph node in focus, when it is something that can be made to default in the contagion lab. */
+  focusNode = computed(() => {
+    const id = this.focusId(), n = this.ctx()?.graph.nodes.find((x) => x.id === id);
+    return n && SHOCKABLE.includes(n.type) ? n : null;
+  });
   matching = computed(() => {
     const q = this.search().trim().toLowerCase(), f = this.levelFilter();
     return this.customers().filter((c) =>
@@ -132,6 +143,47 @@ export class App {
       error: () => { if (id !== DEFAULT_CUSTOMER) this.select(DEFAULT_CUSTOMER); else this.error.set('Cannot load the case. Check that the backend is running.'); },
     });
     this.api.decisions(id).subscribe((d) => this.decisions.set(d));
+    this.loadTasks();
+  }
+
+  private loadTasks() {
+    const id = this.selectedId();
+    this.api.tasks(id).subscribe((t) => this.selectedId() === id && this.caseTasks.set(t));
+  }
+
+  /** Opens the contagion lab with this node defaulting at the given month. */
+  simulate(id: string, month: string | null = null) {
+    this.labStart.set({ month: month ?? (this.asOf() || '2026-09-01'), seeds: [id] });
+    this.view.set('contagion');
+    window.scrollTo({ top: 0 });
+  }
+
+  /** The live portfolio changed (news event applied, task completed): say so and reload the open case. */
+  onChanged(msg: string) {
+    this.notify(msg);
+    const m = this.asOf();
+    if (m) this.select(this.selectedId(), m.slice(0, 7));
+  }
+
+  addTask() {
+    this.api.createTask({ customer_id: this.selectedId(), action: this.newAction(), as_of: this.asOf(), note: this.note() }).subscribe({
+      next: (t) => { this.note.set(''); this.notify(`Task added to the action board: ${ACTION_LABELS[t.action]}.`); this.loadTasks(); },
+      error: () => this.notify('Could not create the task. Check the backend.'),
+    });
+  }
+
+  setTask(t: Task, status: Task['status']) {
+    this.api.setTaskStatus(t.id, status).subscribe((u) => {
+      const r = u.result;
+      this.onChanged(r ? `${ACTION_LABELS[u.action]} done. Score ${r.score_before} → ${r.score_after}, ${r.level_before} → ${r.level_after}.`
+                       : `${ACTION_LABELS[u.action]} reopened, its effect is undone.`);
+    });
+  }
+
+  private notify(msg: string) {
+    clearTimeout(this.toastTimer);
+    this.toast.set(msg);
+    this.toastTimer = setTimeout(() => this.toast.set(''), 5000);
   }
 
   /** Opens a case from any view (alert list, stress test, assistant citation). */
@@ -174,11 +226,12 @@ export class App {
   decide(action: string, decision: 'approved' | 'rejected') {
     this.api.decide(this.selectedId(), {
       as_of: this.asOf(), action, decision, note: this.note(), ai_source: this.explanation()?.source ?? null,
-    }).subscribe(() => {
+    }).subscribe((d) => {
       this.note.set('');
-      this.toast.set(`${decision === 'approved' ? 'Approved' : 'Rejected'}: ${ACTION_LABELS[action] ?? action}. Saved to the audit log.`);
-      setTimeout(() => this.toast.set(''), 4000);
+      this.notify(`${decision === 'approved' ? 'Approved' : 'Rejected'}: ${ACTION_LABELS[action] ?? action}. Saved to the audit log`
+                  + (d.task ? ' and added to the action board.' : '.'));
       this.api.decisions(this.selectedId()).subscribe((d) => this.decisions.set(d));
+      this.loadTasks();
     });
   }
 

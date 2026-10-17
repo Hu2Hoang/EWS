@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
 
-from app import chat as chat_agent, decisions, portfolio, repository, whatif
+from app import chat as chat_agent, contagion, decisions, live, news, portfolio, repository, whatif
 from app.backtest import run_backtest, timeline
 from app.context import build_context
 from app.scoring import evaluate
@@ -17,8 +17,18 @@ from app.scoring import evaluate
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # Warm the in-memory graph in the background so the first user request is not the slow one.
-    threading.Thread(target=repository.load_all, daemon=True).start()
+    threading.Thread(target=_warm, daemon=True).start()
     yield
+
+
+def _warm():
+    """Loads the data and pre-computes the heavy default views so the first visitor does not wait (seconds on a real portfolio)."""
+    repository.load_all()
+    for view in (lambda: customers(DEFAULT_AS_OF), lambda: portfolio_summary(DEFAULT_AS_OF), backtest):
+        try:
+            view()
+        except Exception as e:  # warming is best effort
+            print(f"warm-up skipped: {type(e).__name__}: {e}", flush=True)
 
 
 app = FastAPI(title="Early Warning API", lifespan=lifespan)
@@ -46,6 +56,10 @@ def reload():
 
 @app.get("/customers")
 def customers(as_of: str = DEFAULT_AS_OF):
+    return repository.memo(("customers", as_of), lambda: _customer_rows(as_of))
+
+
+def _customer_rows(as_of: str) -> list:
     h = repository.load_all()
     rows = []
     for cid, c in h["customers"].items():
@@ -62,6 +76,67 @@ def context(cid: str, as_of: str = DEFAULT_AS_OF):
     return build_context(repository.load_all(), cid, as_of)
 
 
+@app.get("/customers/{cid}/contagion")
+def customer_contagion(cid: str, as_of: str = DEFAULT_AS_OF, alpha: float = contagion.ALPHA, hops: int = contagion.HOPS):
+    """Risk reaching this customer from its neighbours (related companies, guarantors, industry, transaction partners)."""
+    _customer(cid)
+    return {"as_of": as_of, "alpha": alpha, "hops": hops, **contagion.propagate(repository.load_all(), as_of, alpha, hops)[cid]}
+
+
+@app.get("/contagion")
+def contagion_ranking(as_of: str = DEFAULT_AS_OF, alpha: float = contagion.ALPHA, hops: int = contagion.HOPS, top: int = 20):
+    """Customers with the most risk flowing in from their neighbourhood, with the strongest sources of that risk."""
+    res = contagion.propagate(repository.load_all(), as_of, alpha, hops)
+    names = repository.load_all()["customers"]
+    rows = sorted(res.items(), key=lambda kv: (-kv[1]["inflow"], kv[0]))[:max(1, min(top, 200))]
+    return {"as_of": as_of, "alpha": alpha, "hops": hops, "watch_threshold": contagion.WATCH,
+            "watch_count": sum(v["watch"] for v in res.values()),
+            "rows": [{"id": cid, "name": names[cid]["name"], **v} for cid, v in rows]}
+
+
+class ShockIn(BaseModel):
+    as_of: str = DEFAULT_AS_OF
+    seeds: list[str]
+    alpha: float = contagion.ALPHA
+    hops: int = contagion.HOPS
+    threshold: float = contagion.DEFAULT_AT
+
+
+@app.post("/contagion/shock")
+def contagion_shock(body: ShockIn):
+    """Default cascade from the chosen nodes: which borrowers the risk reaches, hop by hop and round by round."""
+    try:
+        return contagion.shock(repository.load_all(), body.as_of, body.seeds, body.alpha, body.hops, body.threshold)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/contagion/matrix")
+def contagion_matrix(as_of: str = DEFAULT_AS_OF, alpha: float = contagion.ALPHA, hops: int = contagion.HOPS):
+    return repository.memo(("matrix", as_of, alpha, hops), lambda: contagion.matrix(repository.load_all(), as_of, alpha, hops))
+
+
+@app.get("/contagion/source/{sid}")
+def contagion_source(sid: str, as_of: str = DEFAULT_AS_OF):
+    """Who a source in the contagion matrix is passing risk to right now."""
+    return contagion.receivers(repository.load_all(), as_of, sid)
+
+
+@app.get("/contagion/candidates")
+def contagion_candidates(as_of: str = DEFAULT_AS_OF, limit: int = 40):
+    """Companies and guarantors to shock, with how many borrowers and how much exposure hang on each."""
+    h = repository.load_all()
+    nodes, inbound = contagion.build_graph(h, as_of)
+    rows = []
+    for n, v in nodes.items():
+        if v["type"] not in ("Company", "Guarantor"):
+            continue
+        linked = {s for k in ("related", "guarantor") for s, _ in inbound[n].get(k, [])}
+        rows.append({"id": n, "label": v["label"], "type": v["type"], "own": round(v["own"], 2), "customers": len(linked),
+                     "exposure": round(sum(h["customers"][c]["loan_amount"] for c in linked))})
+    return sorted(rows, key=lambda r: (-r["exposure"]))[:max(1, min(limit, 200))]
+
+
 @app.get("/customers/{cid}/timeline")
 def customer_timeline(cid: str):
     return timeline(_customer(cid), repository.load_all()["industry_trends"])
@@ -69,7 +144,7 @@ def customer_timeline(cid: str):
 
 @app.get("/backtest")
 def backtest():
-    return run_backtest(repository.load_all())
+    return repository.memo(("backtest",), lambda: run_backtest(repository.base()))  # on the loaded data, not the demo overlays
 
 
 @app.get("/customers/{cid}/explain")
@@ -96,8 +171,12 @@ def decide(cid: str, body: DecisionIn):
     if body.action not in decisions.ACTIONS:
         raise HTTPException(422, f"Invalid action: {body.action}")
     r = evaluate(c, repository.load_all()["industry_trends"], body.as_of)
-    return decisions.record(cid, r["as_of"], body.action, body.decision, body.note, body.officer,
-                            body.ai_source, r["level"], r["score"])
+    row = decisions.record(cid, r["as_of"], body.action, body.decision, body.note, body.officer,
+                           body.ai_source, r["level"], r["score"])
+    if body.decision == "approved" and body.action != "no_action":  # an approved proposal becomes a task on the action board
+        row["task"] = live.create_task(cid, body.action, r["as_of"], body.note, body.officer,
+                                       "gemini" if body.ai_source == "gemini" else "rules", row["id"])
+    return row
 
 
 @app.get("/decisions")
@@ -136,7 +215,7 @@ def overview(limit: int = 160):
 
 @app.get("/portfolio/summary")
 def portfolio_summary(as_of: str = DEFAULT_AS_OF):
-    return portfolio.summary(repository.load_all(), as_of)
+    return repository.memo(("portfolio", as_of), lambda: portfolio.summary(repository.load_all(), as_of))
 
 
 class WhatIfIn(BaseModel):
@@ -174,6 +253,105 @@ class ChatIn(BaseModel):
 @app.post("/chat")
 def chat(body: ChatIn):
     return chat_agent.answer(repository.load_all(), body.question, body.as_of, body.history)
+
+
+class TaskIn(BaseModel):
+    customer_id: str
+    action: str
+    as_of: str = DEFAULT_AS_OF
+    note: str = ""
+    officer: str = "Credit Officer"
+
+
+class StatusIn(BaseModel):
+    status: Literal["todo", "doing", "done"]
+
+
+@app.get("/tasks")
+def tasks(customer_id: str | None = None):
+    return live.list_tasks(customer_id)
+
+
+@app.post("/tasks")
+def create_task(body: TaskIn):
+    _customer(body.customer_id)
+    try:
+        return live.create_task(body.customer_id, body.action, body.as_of, body.note, body.officer)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/tasks/{task_id}/status")
+def task_status(task_id: str, body: StatusIn):
+    """Moving a task to done applies its mitigation to the live portfolio and returns the measured effect; moving it back undoes it."""
+    try:
+        return live.set_status(task_id, body.status)
+    except KeyError:
+        raise HTTPException(404, f"Unknown task {task_id}")
+
+
+class NewsIn(BaseModel):
+    text: str
+    as_of: str = DEFAULT_AS_OF
+
+
+@app.post("/news/analyze")
+def news_analyze(body: NewsIn):
+    """Gemini extracts risk events from the text and links them to graph nodes. A dry run: nothing changes until /events."""
+    if not body.text.strip():
+        raise HTTPException(422, "Paste a headline or an article")
+    return news.analyze(repository.load_all(), body.text[:4000], body.as_of)
+
+
+@app.get("/news/samples")
+def news_samples(as_of: str = DEFAULT_AS_OF):
+    return news.samples(repository.load_all(), as_of)
+
+
+class EventIn(BaseModel):
+    as_of: str = DEFAULT_AS_OF
+    target_type: Literal["Company", "Customer", "Industry"]
+    target_id: str
+    event_type: str
+    severity: Literal["low", "medium", "high"] = "medium"
+    description: str
+    source: str = "manual"
+    text: str = ""
+    id: str | None = None  # the draft id from /news/analyze, kept so the UI can track and undo it
+
+
+@app.get("/events")
+def live_events():
+    return live.events()
+
+
+@app.post("/events")
+def apply_event(body: EventIn):
+    """An officer confirms an event: it joins the graph, the portfolio is re-scored and the impact is returned."""
+    try:
+        ov = live.new_event(body.as_of, body.target_type, body.target_id, body.event_type, body.severity,
+                            body.description, body.source, body.text)
+        if body.id:
+            if any(e["id"] == body.id for e in live.events()):
+                raise HTTPException(409, "This event is already applied")
+            ov["id"] = body.id
+        return live.apply(ov)
+    except (KeyError, ValueError) as e:
+        raise HTTPException(422, f"Cannot apply the event: {e}")
+
+
+@app.delete("/events/{overlay_id}")
+def undo_event(overlay_id: str):
+    if not live.remove(overlay_id):
+        raise HTTPException(404, f"Unknown event {overlay_id}")
+    return {"ok": True}
+
+
+@app.post("/live/reset")
+def live_reset():
+    """Demo reset: removes every confirmed event and every task, back to the loaded data."""
+    live.reset()
+    return {"ok": True}
 
 
 # In the container the Angular build is served by this same service (one Cloud Run URL, API under /api).

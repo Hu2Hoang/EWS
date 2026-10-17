@@ -4,7 +4,7 @@ import uuid
 from app.db import run
 
 ACTIONS = {"increase_monitoring", "request_additional_collateral", "suspend_disbursement",
-           "review_related_exposure", "no_action"}
+           "review_related_exposure", "restructure_loan", "no_action"}
 
 
 def record(customer_id: str, as_of: str, action: str, decision: str, note: str, officer: str,

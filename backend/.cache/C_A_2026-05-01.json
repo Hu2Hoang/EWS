@@ -21,13 +21,13 @@
   {
    "tool": "get_policy",
    "args": {
-    "policy_id": "P-31"
+    "policy_id": "P-22"
    }
   },
   {
    "tool": "get_policy",
    "args": {
-    "policy_id": "P-22"
+    "policy_id": "P-31"
    }
   },
   {
@@ -41,8 +41,8 @@
   "pii_masked": true,
   "replacements": 15
  },
- "fingerprint": "499de9d3e7a5",
- "summary": "Customer A is currently classified as High Risk due to multiple early-warning signals, including a significant revenue decline, negative cash flow, collateral devaluation, and contagion risk from a related company. The customer operates in the Seafood industry, which is experiencing a sustained downturn.",
+ "fingerprint": "ffced72d5535",
+ "summary": "Customer A is currently classified as High Risk due to the accumulation of five distinct early-warning signals, including significant revenue decline, negative cash flow, and collateral devaluation. The customer's financial health is further pressured by a downturn in the seafood industry and contagion risk from a related company, An Phat Garment Co., which is currently past due.",
  "findings": [
   {
    "statement": "Customer A experienced a 20.6% drop in 90-day revenue compared to the baseline average.",
@@ -52,7 +52,7 @@
    "policy_id": "P-17"
   },
   {
-   "statement": "The customer has recorded negative net cash flow for two consecutive periods (-633.2 and -855.3).",
+   "statement": "The customer has reported negative net cash flow for two consecutive periods, with the most recent at -855.3.",
    "evidence_ids": [
     "C_A"
    ],
@@ -66,14 +66,14 @@
    "policy_id": "P-31"
   },
   {
-   "statement": "Collateral value for machinery has decreased by 10.8% from its peak value.",
+   "statement": "Collateral value for the machinery has decreased by 10.8% from its peak value.",
    "evidence_ids": [
     "KC_A"
    ],
    "policy_id": "P-22"
   },
   {
-   "statement": "The Seafood industry is in a downturn with a growth rate of -6.1%.",
+   "statement": "The seafood industry is experiencing a downturn with a growth rate of -6.1%.",
    "evidence_ids": [
     "Seafood"
    ],
@@ -93,11 +93,11 @@
   },
   {
    "action": "review_related_exposure",
-   "rationale": "A related company is past due, requiring a review of contagion risk and repayment capacity per policy P-31.",
+   "rationale": "A related company is past due, requiring a formal review of contagion risk and repayment capacity per policy P-31.",
    "policy_id": "P-31"
   }
  ],
- "limitations": "The credit officer should verify if the negative cash flow is a temporary seasonal effect or a structural issue and confirm the current financial health of the related company An Phat Garment Co. beyond its past-due status.",
+ "limitations": "The credit officer should verify if the negative cash flow is a temporary seasonal effect or a structural issue and confirm the extent of the financial dependency between Customer A and An Phat Garment Co..",
  "verification": {
   "ok": true,
   "issues": []

@@ -2,11 +2,11 @@ import { AfterViewInit, Component, ElementRef, OnDestroy, computed, effect, inpu
 import cytoscape from 'cytoscape';
 import { Context, Overview } from './api';
 
-const COLORS: Record<string, string> = {
+export const COLORS: Record<string, string> = {
   Customer: '#15171A', Loan: '#4F6D8F', Collateral: '#5F8F7B', Industry: '#B58A3C',
   Company: '#9AA0A6', Guarantor: '#6E9AA8', RiskEvent: '#A3262F',
 };
-const SHAPES: Record<string, string> = {
+export const SHAPES: Record<string, string> = {
   Customer: 'round-rectangle', Loan: 'diamond', Collateral: 'hexagon', Industry: 'round-triangle',
   Company: 'ellipse', Guarantor: 'ellipse', RiskEvent: 'star',
 };
@@ -93,6 +93,8 @@ export class GraphView implements AfterViewInit, OnDestroy {
           'text-background-opacity': 0.85, 'text-background-padding': '1px',
         } },
         { selector: 'edge.ctx.hot', style: { 'line-color': '#A3262F', 'target-arrow-color': '#A3262F', width: 2 } },
+        // A related company cut off by a completed mitigation task.
+        { selector: 'edge.ctx[type = "RING_FENCED"]', style: { 'line-style': 'dotted', 'line-color': '#3E7B62', 'target-arrow-color': '#3E7B62', color: '#3E7B62' } },
       ],
     });
     this.startFlow();
