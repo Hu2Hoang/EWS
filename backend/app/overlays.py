@@ -53,7 +53,7 @@ class JsonList:
 
     @property
     def path(self) -> Path:
-        return LIVE_DIR / f"{self.name}_{os.getenv('DATA_SOURCE', 'mock')}.json"
+        return LIVE_DIR / f"{self.name}_{'real' if os.getenv('DATA_SOURCE') == 'real' else 'mock'}.json"
 
     def all(self) -> list[dict]:
         with self._lock:

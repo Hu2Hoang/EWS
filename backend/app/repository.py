@@ -36,21 +36,29 @@ def load_all() -> dict:
         return _data
 
 
+SOURCE = "not loaded"  # where the data came from: neo4j, snapshot or real (shown by /health)
+
+
 def base() -> dict:
-    global _base
+    """DATA_SOURCE=real: the anonymised real snapshot. DATA_SOURCE=snapshot: the bundled snapshot, Neo4j is never touched
+    (use it once the Aura Free instance is paused for good). Otherwise Neo4j, falling back to the snapshot."""
+    global _base, SOURCE
     with _lock:
-        if _base is None and os.getenv("DATA_SOURCE") == "real":
-            _base = json.loads(SNAPSHOT_REAL.read_text())  # anonymised real data; Neo4j is not touched
+        mode = os.getenv("DATA_SOURCE", "")
+        if _base is None and mode == "real":
+            _base, SOURCE = json.loads(SNAPSHOT_REAL.read_text()), "real"  # anonymised real data; Neo4j is not touched
+        if _base is None and mode == "snapshot":
+            _base, SOURCE = json.loads(SNAPSHOT.read_text()), "snapshot"
         if _base is None:
             try:
-                _base = _load_from_neo4j()
+                _base, SOURCE = _load_from_neo4j(), "neo4j"
                 SNAPSHOT.parent.mkdir(exist_ok=True)
                 SNAPSHOT.write_text(json.dumps(_base))
             except Exception as e:
                 if not SNAPSHOT.exists():
                     raise
                 print(f"Neo4j unavailable ({type(e).__name__}); serving the saved snapshot", flush=True)
-                _base = json.loads(SNAPSHOT.read_text())
+                _base, SOURCE = json.loads(SNAPSHOT.read_text()), "snapshot (Neo4j unavailable)"
         return _base
 
 

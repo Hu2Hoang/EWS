@@ -46,7 +46,7 @@ def _customer(cid: str) -> dict:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "customers": len(repository.load_all()["customers"])}
+    return {"ok": True, "customers": len(repository.load_all()["customers"]), "data_source": repository.SOURCE}
 
 
 @app.post("/admin/reload")
@@ -172,7 +172,7 @@ def decide(cid: str, body: DecisionIn):
         raise HTTPException(422, f"Invalid action: {body.action}")
     r = evaluate(c, repository.load_all()["industry_trends"], body.as_of)
     row = decisions.record(cid, r["as_of"], body.action, body.decision, body.note, body.officer,
-                           body.ai_source, r["level"], r["score"])
+                           body.ai_source, r["level"], r["score"], c["name"])
     if body.decision == "approved" and body.action != "no_action":  # an approved proposal becomes a task on the action board
         row["task"] = live.create_task(cid, body.action, r["as_of"], body.note, body.officer,
                                        "gemini" if body.ai_source == "gemini" else "rules", row["id"])
